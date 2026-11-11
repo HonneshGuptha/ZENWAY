@@ -1,0 +1,46 @@
+{
+ "note": "Credits for the photographs in this folder: photos.mjs credits prints the footer block for the ones the pages use.",
+ "photos": [
+  {
+   "file": "photo-f29678913-960.jpg",
+   "files": [
+    "photo-f29678913-500.jpg",
+    "photo-f29678913-960.jpg"
+   ],
+   "id": "f29678913",
+   "alt": "Bicycle Rider on campus of Tulane University, Uptown New Orleans, March 2008",
+   "by": "Tulane Public Relations",
+   "licence": "CC BY 2.0",
+   "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+   "page": "https://commons.wikimedia.org/wiki/File:Bicycle_Rider_on_campus_of_Tulane_University,_Uptown_New_Orleans,_March_2008.jpg",
+   "source": "Wikimedia Commons"
+  },
+  {
+   "file": "photo-f70201096-500.jpg",
+   "files": [
+    "photo-f70201096-500.jpg"
+   ],
+   "id": "f70201096",
+   "alt": "Bike on Campus (3829343527)",
+   "by": "Sharon Mollerus",
+   "licence": "CC BY 2.0",
+   "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+   "page": "https://commons.wikimedia.org/wiki/File:Bike_on_Campus_(3829343527).jpg",
+   "source": "Wikimedia Commons"
+  },
+  {
+   "file": "photo-f89300022-960.jpg",
+   "files": [
+    "photo-f89300022-500.jpg",
+    "photo-f89300022-960.jpg"
+   ],
+   "id": "f89300022",
+   "alt": "Bike Share launch passing through SJSU campus (9625589722)",
+   "by": "Richard Masoner / Cyclelicious from Santa Cruz, California , USA",
+   "licence": "CC BY-SA 2.0",
+   "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+   "page": "https://commons.wikimedia.org/wiki/File:Bike_Share_launch_passing_through_SJSU_campus_(9625589722).jpg",
+   "source": "Wikimedia Commons"
+  }
+ ]
+}
