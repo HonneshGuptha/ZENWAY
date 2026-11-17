@@ -32,6 +32,7 @@ import {
   User,
   MessageSquare,
   ShieldAlert,
+  QrCode,
 } from "lucide-react"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
@@ -40,6 +41,7 @@ import { StudentPublicProfileModal } from "@/components/profile/StudentPublicPro
 import { ReportModal } from "@/components/safety/ReportModal"
 import { CancellationModal } from "@/components/exchange/CancellationModal"
 import { DisputeModal } from "@/components/exchange/DisputeModal"
+import { UPIPaymentModal } from "@/components/UPIPaymentModal"
 
 type VehicleType = "bicycle" | "e_scooter" | "car" | "motorcycle"
 
@@ -142,6 +144,14 @@ export function RentPage() {
     transactionId: "",
     respondentId: "",
     title: "",
+  })
+
+  // UPI Payment Modal
+  const [showUPI, setShowUPI] = React.useState(false)
+  const [upiPaymentData, setUpiPaymentData] = React.useState<{ amount: number; txId: string; payeeName?: string }>({
+    amount: 0,
+    txId: "",
+    payeeName: "Student Peer",
   })
 
   // Fetch Available Vehicles
@@ -788,6 +798,22 @@ export function RentPage() {
                           <Button
                             size="sm"
                             variant="outline"
+                            onClick={() => {
+                              setUpiPaymentData({
+                                amount: req.total_price || 0,
+                                txId: req.id,
+                                payeeName: req.renter?.full_name || "Student Peer",
+                              })
+                              setShowUPI(true)
+                            }}
+                            className="text-xs h-8 gap-1.5 cursor-pointer text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                          >
+                            <QrCode className="size-3.5" />
+                            <span>Settle via UPI</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => setViewProfileStudentId(req.renter_id)}
                             className="text-xs h-8 gap-1.5 cursor-pointer text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
                           >
@@ -862,6 +888,22 @@ export function RentPage() {
                       )}
                       {req.status === "accepted" && (
                         <div className="flex items-center gap-2 flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setUpiPaymentData({
+                                amount: req.total_price || 0,
+                                txId: req.id,
+                                payeeName: "Student Owner",
+                              })
+                              setShowUPI(true)
+                            }}
+                            className="text-xs h-8 gap-1.5 cursor-pointer text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                          >
+                            <QrCode className="size-3.5" />
+                            <span>Settle via UPI</span>
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
@@ -1266,6 +1308,16 @@ export function RentPage() {
           }}
         />
       )}
+
+      {/* UPI Payment Modal */}
+      <UPIPaymentModal
+        isOpen={showUPI}
+        onClose={() => setShowUPI(false)}
+        payeeUpi="test@upi"
+        payeeName={upiPaymentData.payeeName || "Student Peer"}
+        amount={upiPaymentData.amount}
+        txId={upiPaymentData.txId}
+      />
     </motion.div>
   )
 }

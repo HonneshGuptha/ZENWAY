@@ -30,6 +30,7 @@ import {
   MessageSquare,
   ShieldAlert,
   Navigation,
+  QrCode,
 } from "lucide-react"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
@@ -39,6 +40,7 @@ import { StudentPublicProfileModal } from "@/components/profile/StudentPublicPro
 import { ReportModal } from "@/components/safety/ReportModal"
 import { CancellationModal } from "@/components/exchange/CancellationModal"
 import { DisputeModal } from "@/components/exchange/DisputeModal"
+import { UPIPaymentModal } from "@/components/UPIPaymentModal"
 
 interface RideWithDriver {
   id: string
@@ -131,6 +133,14 @@ export function RidePage() {
     transactionId: "",
     respondentId: "",
     title: "",
+  })
+
+  // UPI Payment Modal
+  const [showUPI, setShowUPI] = React.useState(false)
+  const [upiPaymentData, setUpiPaymentData] = React.useState<{ amount: number; txId: string; payeeName?: string }>({
+    amount: 0,
+    txId: "",
+    payeeName: "Student Peer",
   })
 
   // Fetch Available Rides
@@ -681,6 +691,22 @@ export function RidePage() {
                           <Button
                             size="sm"
                             variant="outline"
+                            onClick={() => {
+                              setUpiPaymentData({
+                                amount: (req.ride?.price_per_seat || 0) * req.seats_requested,
+                                txId: req.id,
+                                payeeName: req.passenger?.full_name || "Student Peer",
+                              })
+                              setShowUPI(true)
+                            }}
+                            className="text-xs h-7 gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer"
+                          >
+                            <QrCode className="size-3" />
+                            <span>Settle via UPI</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => setViewProfileStudentId(req.passenger_id)}
                             className="text-xs h-7 gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer"
                           >
@@ -769,6 +795,22 @@ export function RidePage() {
                       )}
                       {req.status === "accepted" && (
                         <div className="flex items-center justify-end gap-2 flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setUpiPaymentData({
+                                amount: (req.ride?.price_per_seat || 0) * req.seats_requested,
+                                txId: req.id,
+                                payeeName: "Student Driver",
+                              })
+                              setShowUPI(true)
+                            }}
+                            className="text-xs h-7 gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer"
+                          >
+                            <QrCode className="size-3" />
+                            <span>Settle via UPI</span>
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
@@ -1196,6 +1238,16 @@ export function RidePage() {
           }}
         />
       )}
+
+      {/* UPI Payment Modal */}
+      <UPIPaymentModal
+        isOpen={showUPI}
+        onClose={() => setShowUPI(false)}
+        payeeUpi="test@upi"
+        payeeName={upiPaymentData.payeeName || "Student Peer"}
+        amount={upiPaymentData.amount}
+        txId={upiPaymentData.txId}
+      />
     </motion.div>
   )
 }
