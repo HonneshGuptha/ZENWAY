@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -64,6 +64,13 @@ export type Database = {
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_access_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -175,6 +182,8 @@ export type Database = {
         Row: {
           accepted_offer_id: string | null
           assigned_carrier_id: string | null
+          cancellation_reason: string | null
+          carrier_confirmed_at: string | null
           created_at: string
           delivery_lat: number | null
           delivery_lng: number | null
@@ -185,10 +194,13 @@ export type Database = {
           item_size: Database["public"]["Enums"]["package_size"]
           item_title: string
           needed_by: string
+          payment_arrangement: string | null
+          payment_status: string | null
           pickup_lat: number | null
           pickup_lng: number | null
           pickup_location: string
           pickup_photo_path: string | null
+          requester_confirmed_at: string | null
           requester_id: string
           reward_amount: number
           special_instructions: string | null
@@ -199,6 +211,8 @@ export type Database = {
         Insert: {
           accepted_offer_id?: string | null
           assigned_carrier_id?: string | null
+          cancellation_reason?: string | null
+          carrier_confirmed_at?: string | null
           created_at?: string
           delivery_lat?: number | null
           delivery_lng?: number | null
@@ -209,10 +223,13 @@ export type Database = {
           item_size?: Database["public"]["Enums"]["package_size"]
           item_title: string
           needed_by: string
+          payment_arrangement?: string | null
+          payment_status?: string | null
           pickup_lat?: number | null
           pickup_lng?: number | null
           pickup_location: string
           pickup_photo_path?: string | null
+          requester_confirmed_at?: string | null
           requester_id: string
           reward_amount?: number
           special_instructions?: string | null
@@ -223,6 +240,8 @@ export type Database = {
         Update: {
           accepted_offer_id?: string | null
           assigned_carrier_id?: string | null
+          cancellation_reason?: string | null
+          carrier_confirmed_at?: string | null
           created_at?: string
           delivery_lat?: number | null
           delivery_lng?: number | null
@@ -233,10 +252,13 @@ export type Database = {
           item_size?: Database["public"]["Enums"]["package_size"]
           item_title?: string
           needed_by?: string
+          payment_arrangement?: string | null
+          payment_status?: string | null
           pickup_lat?: number | null
           pickup_lng?: number | null
           pickup_location?: string
           pickup_photo_path?: string | null
+          requester_confirmed_at?: string | null
           requester_id?: string
           reward_amount?: number
           special_instructions?: string | null
@@ -278,6 +300,94 @@ export type Database = {
             columns: ["accepted_offer_id"]
             isOneToOne: false
             referencedRelation: "carry_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disputes: {
+        Row: {
+          created_at: string
+          dispute_details: string
+          dispute_reason: string
+          id: string
+          reporter_id: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          respondent_id: string
+          status: string
+          transaction_id: string
+          transaction_type: string
+        }
+        Insert: {
+          created_at?: string
+          dispute_details: string
+          dispute_reason: string
+          id?: string
+          reporter_id: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          respondent_id: string
+          status?: string
+          transaction_id: string
+          transaction_type: string
+        }
+        Update: {
+          created_at?: string
+          dispute_details?: string
+          dispute_reason?: string
+          id?: string
+          reporter_id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          respondent_id?: string
+          status?: string
+          transaction_id?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disputes_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_respondent_id_fkey"
+            columns: ["respondent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_respondent_id_fkey"
+            columns: ["respondent_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -345,6 +455,7 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           university_name: string | null
           updated_at: string
+          upi_id: string | null
           verification_status: Database["public"]["Enums"]["account_verification_status"]
         }
         Insert: {
@@ -361,6 +472,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           university_name?: string | null
           updated_at?: string
+          upi_id?: string | null
           verification_status?: Database["public"]["Enums"]["account_verification_status"]
         }
         Update: {
@@ -377,18 +489,39 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           university_name?: string | null
           updated_at?: string
+          upi_id?: string | null
           verification_status?: Database["public"]["Enums"]["account_verification_status"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_registration_reviewed_by_fkey"
+            columns: ["registration_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_registration_reviewed_by_fkey"
+            columns: ["registration_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rental_requests: {
         Row: {
+          cancellation_reason: string | null
           created_at: string
           deposit_amount: number
           end_time: string
           id: string
+          owner_confirmed_at: string | null
           owner_id: string
           owner_notes: string | null
+          payment_arrangement: string | null
+          payment_status: string | null
+          renter_confirmed_at: string | null
           renter_id: string
           renter_notes: string | null
           start_time: string
@@ -398,12 +531,17 @@ export type Database = {
           vehicle_id: string
         }
         Insert: {
+          cancellation_reason?: string | null
           created_at?: string
           deposit_amount?: number
           end_time: string
           id?: string
+          owner_confirmed_at?: string | null
           owner_id: string
           owner_notes?: string | null
+          payment_arrangement?: string | null
+          payment_status?: string | null
+          renter_confirmed_at?: string | null
           renter_id: string
           renter_notes?: string | null
           start_time: string
@@ -413,12 +551,17 @@ export type Database = {
           vehicle_id: string
         }
         Update: {
+          cancellation_reason?: string | null
           created_at?: string
           deposit_amount?: number
           end_time?: string
           id?: string
+          owner_confirmed_at?: string | null
           owner_id?: string
           owner_notes?: string | null
+          payment_arrangement?: string | null
+          payment_status?: string | null
+          renter_confirmed_at?: string | null
           renter_id?: string
           renter_notes?: string | null
           start_time?: string
@@ -556,9 +699,14 @@ export type Database = {
       }
       ride_requests: {
         Row: {
+          cancellation_reason: string | null
           created_at: string
+          driver_confirmed_at: string | null
           id: string
+          passenger_confirmed_at: string | null
           passenger_id: string
+          payment_arrangement: string | null
+          payment_status: string | null
           pickup_note: string | null
           ride_id: string
           seats_requested: number
@@ -567,9 +715,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancellation_reason?: string | null
           created_at?: string
+          driver_confirmed_at?: string | null
           id?: string
+          passenger_confirmed_at?: string | null
           passenger_id: string
+          payment_arrangement?: string | null
+          payment_status?: string | null
           pickup_note?: string | null
           ride_id: string
           seats_requested?: number
@@ -578,9 +731,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancellation_reason?: string | null
           created_at?: string
+          driver_confirmed_at?: string | null
           id?: string
+          passenger_confirmed_at?: string | null
           passenger_id?: string
+          payment_arrangement?: string | null
+          payment_status?: string | null
           pickup_note?: string | null
           ride_id?: string
           seats_requested?: number
@@ -871,6 +1029,7 @@ export type Database = {
           phone_number: string | null
           role: Database["public"]["Enums"]["user_role"] | null
           university_name: string | null
+          upi_id: string | null
           verification_status:
             | Database["public"]["Enums"]["account_verification_status"]
             | null
@@ -884,6 +1043,7 @@ export type Database = {
           phone_number?: never
           role?: Database["public"]["Enums"]["user_role"] | null
           university_name?: string | null
+          upi_id?: never
           verification_status?:
             | Database["public"]["Enums"]["account_verification_status"]
             | null
@@ -897,6 +1057,7 @@ export type Database = {
           phone_number?: never
           role?: Database["public"]["Enums"]["user_role"] | null
           university_name?: string | null
+          upi_id?: never
           verification_status?:
             | Database["public"]["Enums"]["account_verification_status"]
             | null
@@ -914,6 +1075,28 @@ export type Database = {
         Args: { p_request_id: string }
         Returns: undefined
       }
+      admin_moderate_listing: {
+        Args: {
+          p_action: string
+          p_entity_id: string
+          p_entity_type: string
+          p_reason?: string
+        }
+        Returns: boolean
+      }
+      admin_resolve_dispute: {
+        Args: { p_dispute_id: string; p_notes: string; p_resolution: string }
+        Returns: boolean
+      }
+      approve_registration: { Args: { p_user_id: string }; Returns: boolean }
+      cancel_transaction_with_reason: {
+        Args: { p_reason: string; p_request_id: string; p_service: string }
+        Returns: boolean
+      }
+      confirm_mutual_completion: {
+        Args: { p_request_id: string; p_service: string }
+        Returns: Json
+      }
       create_audit_log: {
         Args: {
           p_action: string
@@ -925,6 +1108,76 @@ export type Database = {
         }
         Returns: string
       }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      get_admin_disputes: {
+        Args: never
+        Returns: {
+          created_at: string
+          dispute_details: string
+          dispute_reason: string
+          id: string
+          reporter_email: string
+          reporter_id: string
+          reporter_name: string
+          resolution_notes: string
+          resolved_at: string
+          respondent_email: string
+          respondent_id: string
+          respondent_name: string
+          status: string
+          transaction_id: string
+          transaction_type: string
+        }[]
+      }
+      get_admin_registrations: {
+        Args: { p_status?: string }
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          phone_number: string
+          registration_rejection_reason: string
+          registration_reviewed_at: string
+          registration_reviewed_by: string
+          registration_status: Database["public"]["Enums"]["registration_approval_status"]
+          role: Database["public"]["Enums"]["user_role"]
+          university_name: string
+          verification_status: Database["public"]["Enums"]["account_verification_status"]
+        }[]
+      }
+      get_admin_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          registration_status: Database["public"]["Enums"]["registration_approval_status"]
+          role: Database["public"]["Enums"]["user_role"]
+          university_name: string
+          verification_status: Database["public"]["Enums"]["account_verification_status"]
+        }[]
+      }
+      get_admin_verifications: {
+        Args: { p_status?: string }
+        Returns: {
+          created_at: string
+          document_type: Database["public"]["Enums"]["document_type"]
+          email: string
+          full_name: string
+          id: string
+          id_document_path: string
+          rejection_reason: string
+          reviewed_at: string
+          reviewed_by: string
+          status: Database["public"]["Enums"]["verification_submission_status"]
+          student_id_number: string
+          university_name: string
+          user_id: string
+        }[]
+      }
+      get_platform_statistics: { Args: never; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
       is_verified_student: { Args: never; Returns: boolean }
       promote_student_to_admin: {
@@ -935,99 +1188,37 @@ export type Database = {
         Args: { p_user_email: string }
         Returns: boolean
       }
-      approve_registration: {
-        Args: { p_user_id: string }
-        Returns: boolean
-      }
       reject_registration: {
-        Args: { p_user_id: string; p_rejection_reason: string }
+        Args: { p_rejection_reason: string; p_user_id: string }
         Returns: boolean
-      }
-      get_admin_registrations: {
-        Args: { p_status?: string | null }
-        Returns: {
-          id: string
-          full_name: string
-          email: string
-          phone_number: string | null
-          university_name: string | null
-          role: Database["public"]["Enums"]["user_role"]
-          verification_status: Database["public"]["Enums"]["account_verification_status"]
-          registration_status: Database["public"]["Enums"]["registration_approval_status"]
-          registration_rejection_reason: string | null
-          created_at: string
-          registration_reviewed_at: string | null
-          registration_reviewed_by: string | null
-        }[]
-      }
-      verify_admin_access_key: {
-        Args: { p_key: string }
-        Returns: boolean
-      }
-      update_admin_access_key: {
-        Args: { p_old_key: string; p_new_key: string }
-        Returns: boolean
-      }
-      get_admin_verifications: {
-        Args: { p_status?: string | null }
-        Returns: {
-          id: string
-          user_id: string
-          student_id_number: string
-          id_document_path: string
-          document_type: Database["public"]["Enums"]["document_type"]
-          status: Database["public"]["Enums"]["verification_submission_status"]
-          rejection_reason: string | null
-          created_at: string
-          reviewed_at: string | null
-          reviewed_by: string | null
-          full_name: string
-          email: string
-          university_name: string | null
-        }[]
       }
       review_student_verification: {
         Args: {
-          p_verification_id: string
           p_decision: string
-          p_reason?: string | null
+          p_reason?: string
+          p_verification_id: string
         }
         Returns: boolean
       }
-      get_admin_users: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          full_name: string
-          email: string
-          university_name: string | null
-          role: Database["public"]["Enums"]["user_role"]
-          verification_status: Database["public"]["Enums"]["account_verification_status"]
-          registration_status: Database["public"]["Enums"]["registration_approval_status"]
-          created_at: string
-        }[]
+      submit_transaction_dispute: {
+        Args: {
+          p_dispute_details: string
+          p_dispute_reason: string
+          p_respondent_id: string
+          p_transaction_id: string
+          p_transaction_type: string
+        }
+        Returns: string
       }
       toggle_user_suspension: {
-        Args: {
-          p_user_id: string
-          p_suspend: boolean
-          p_reason?: string | null
-        }
+        Args: { p_reason?: string; p_suspend: boolean; p_user_id: string }
         Returns: boolean
       }
-      admin_moderate_listing: {
-        Args: {
-          p_entity_type: string
-          p_entity_id: string
-          p_action: string
-          p_reason?: string | null
-        }
+      update_admin_access_key: {
+        Args: { p_new_key: string; p_old_key: string }
         Returns: boolean
       }
-      get_platform_statistics: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      verify_admin_access_key: { Args: { p_key: string }; Returns: boolean }
     }
     Enums: {
       account_verification_status:
@@ -1035,7 +1226,6 @@ export type Database = {
         | "pending"
         | "verified"
         | "suspended"
-      registration_approval_status: "pending" | "approved" | "rejected"
       carry_offer_status: "pending" | "accepted" | "rejected" | "cancelled"
       carry_request_status:
         | "open"
@@ -1070,6 +1260,7 @@ export type Database = {
         | "review_received"
         | "system_announcement"
       package_size: "envelope" | "small_box" | "backpack" | "medium_box"
+      registration_approval_status: "pending" | "approved" | "rejected"
       rental_request_status:
         | "pending"
         | "accepted"
@@ -1255,6 +1446,7 @@ export const Constants = {
         "system_announcement",
       ],
       package_size: ["envelope", "small_box", "backpack", "medium_box"],
+      registration_approval_status: ["pending", "approved", "rejected"],
       rental_request_status: [
         "pending",
         "accepted",

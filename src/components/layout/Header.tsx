@@ -222,36 +222,38 @@ export function Header({ currentTab, onTabChange }: HeaderProps) {
                   }
                 />
                 <DropdownMenuContent align="end" sideOffset={6} className="w-64">
-                  <DropdownMenuLabel className="font-normal px-2 py-1.5">
-                    <div className="flex flex-col space-y-1">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold leading-none text-foreground truncate max-w-[150px]">
-                          {profile?.full_name || "Campus Student"}
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel className="font-normal px-2 py-1.5">
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold leading-none text-foreground truncate max-w-[150px]">
+                            {profile?.full_name || "Campus Student"}
+                          </p>
+                          <span
+                            className={`rounded-full px-1.5 py-0.2 text-[9px] font-semibold capitalize ${
+                              isVerified
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                : isPending
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                : isSuspended
+                                ? "bg-destructive/10 text-destructive"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {profile?.verification_status || "Unverified"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate font-mono">
+                          {user.email}
                         </p>
-                        <span
-                          className={`rounded-full px-1.5 py-0.2 text-[9px] font-semibold capitalize ${
-                            isVerified
-                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                              : isPending
-                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                              : isSuspended
-                              ? "bg-destructive/10 text-destructive"
-                              : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {profile?.verification_status || "Unverified"}
-                        </span>
+                        {profile?.university_name && (
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {profile.university_name}
+                          </p>
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground truncate font-mono">
-                        {user.email}
-                      </p>
-                      {profile?.university_name && (
-                        <p className="text-[10px] text-muted-foreground truncate">
-                          {profile.university_name}
-                        </p>
-                      )}
-                    </div>
-                  </DropdownMenuLabel>
+                    </DropdownMenuLabel>
+                  </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
                     {isAdmin && (

@@ -41,6 +41,8 @@ import { ReportModal } from "@/components/safety/ReportModal"
 import { CancellationModal } from "@/components/exchange/CancellationModal"
 import { DisputeModal } from "@/components/exchange/DisputeModal"
 import { UPIPaymentModal } from "@/components/UPIPaymentModal"
+import { ContactHandoffCard } from "@/components/ContactHandoffCard"
+import { StatusBadge } from "@/components/ui/StatusBadge"
 
 interface RideWithDriver {
   id: string
@@ -58,6 +60,7 @@ interface RideWithDriver {
     full_name: string | null
     university_name: string | null
     verification_status: string | null
+    upi_id?: string | null
   }
 }
 
@@ -76,15 +79,20 @@ interface RideRequestItem {
     price_per_seat: number
     available_seats: number
     driver_id?: string
+    driver?: {
+      full_name?: string | null
+      upi_id?: string | null
+    } | null
   }
   passenger?: {
     full_name: string | null
     university_name: string | null
+    upi_id?: string | null
   }
 }
 
 export function RidePage() {
-  const { user, isVerified } = useAuth()
+  const { user, profile, isVerified } = useAuth()
 
   const [activeTab, setActiveTab] = React.useState<"browse" | "manage">("browse")
   const [rides, setRides] = React.useState<RideWithDriver[]>([])
@@ -92,6 +100,7 @@ export function RidePage() {
   const [mySentRequests, setMySentRequests] = React.useState<RideRequestItem[]>([])
   const [myPublishedRides, setMyPublishedRides] = React.useState<RideWithDriver[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
 
   // Publish Ride Modal
@@ -137,10 +146,11 @@ export function RidePage() {
 
   // UPI Payment Modal
   const [showUPI, setShowUPI] = React.useState(false)
-  const [upiPaymentData, setUpiPaymentData] = React.useState<{ amount: number; txId: string; payeeName?: string }>({
+  const [upiPaymentData, setUpiPaymentData] = React.useState<{ amount: number; txId: string; payeeName?: string; payeeUpi?: string | null }>({
     amount: 0,
     txId: "",
     payeeName: "Student Peer",
+    payeeUpi: null,
   })
 
   // Fetch Available Rides
@@ -152,7 +162,7 @@ export function RidePage() {
         .select(`
           id, driver_id, origin_name, destination_name, departure_time,
           available_seats, price_per_seat, notes, status, created_at,
-          driver:public_profiles!rides_driver_id_fkey(full_name, university_name, verification_status)
+          driver:public_profiles!rides_driver_id_fkey(full_name, university_name, verification_status, upi_id)
         `)
         .eq("status", "scheduled")
         .gt("available_seats", 0)
@@ -196,8 +206,8 @@ export function RidePage() {
           .from("ride_requests")
           .select(`
             id, ride_id, passenger_id, seats_requested, pickup_note, status, created_at,
-            ride:rides(origin_name, destination_name, departure_time, price_per_seat, available_seats, driver_id),
-            passenger:public_profiles!ride_requests_passenger_id_fkey(full_name, university_name)
+            ride:rides(origin_name, destination_name, departure_time, price_per_seat, available_seats, driver_id, driver:public_profiles!rides_driver_id_fkey(full_name, upi_id)),
+            passenger:public_profiles!ride_requests_passenger_id_fkey(full_name, university_name, upi_id)
           `)
           .in("ride_id", myRideIds)
           .order("created_at", { ascending: false })
@@ -212,8 +222,8 @@ export function RidePage() {
         .from("ride_requests")
         .select(`
           id, ride_id, passenger_id, seats_requested, pickup_note, status, created_at,
-          ride:rides(origin_name, destination_name, departure_time, price_per_seat, available_seats, driver_id),
-          passenger:public_profiles!ride_requests_passenger_id_fkey(full_name, university_name)
+          ride:rides(origin_name, destination_name, departure_time, price_per_seat, available_seats, driver_id, driver:public_profiles!rides_driver_id_fkey(full_name, upi_id)),
+          passenger:public_profiles!ride_requests_passenger_id_fkey(full_name, university_name, upi_id)
         `)
         .eq("passenger_id", user.id)
         .order("created_at", { ascending: false })
@@ -322,49 +332,66 @@ export function RidePage() {
   // Driver Action: Accept Request (Calls atomic accept_ride_request RPC)
   const handleAcceptRequest = async (requestId: string) => {
     try {
+      setActionLoadingId(requestId)
       const { error } = await supabase.rpc("accept_ride_request", {
         p_request_id: requestId,
       })
       if (error) throw error
       toast.success("Passenger accepted! Seats decremented.")
+      setIncomingRequests((prev) =>
+        prev.map((req) => (req.id === requestId ? { ...req, status: "accepted" } : req))
+      )
       await fetchUserRides()
       await fetchRides()
     } catch (err: any) {
       console.error("[RidePage] Accept request error:", err)
       toast.error(err.message || "Failed to accept seat request.")
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
   // Driver Action: Reject Request
   const handleRejectRequest = async (requestId: string) => {
     try {
+      setActionLoadingId(requestId)
       const { error } = await supabase
         .from("ride_requests")
         .update({ status: "rejected" })
         .eq("id", requestId)
       if (error) throw error
       toast.success("Seat request declined.")
+      setIncomingRequests((prev) => prev.filter((req) => req.id !== requestId))
       await fetchUserRides()
     } catch (err: any) {
       console.error("[RidePage] Reject error:", err)
       toast.error(err.message || "Failed to reject request.")
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
   // Complete Ride
   const handleCompleteRide = async (rideId: string) => {
     try {
+      setActionLoadingId(rideId)
       const { error } = await supabase
         .from("rides")
         .update({ status: "completed" })
         .eq("id", rideId)
       if (error) throw error
       toast.success("Ride marked completed!")
+      setMyPublishedRides((prev) =>
+        prev.map((ride) => (ride.id === rideId ? { ...ride, status: "completed" } : ride))
+      )
+      setRides((prev) => prev.filter((ride) => ride.id !== rideId))
       await fetchUserRides()
       await fetchRides()
     } catch (err: any) {
       console.error("[RidePage] Complete error:", err)
       toast.error(err.message || "Failed to complete ride.")
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
@@ -622,8 +649,24 @@ export function RidePage() {
             </h2>
 
             {myPublishedRides.length === 0 ? (
-              <div className="p-6 text-center border border-dashed border-border rounded-xl text-xs text-muted-foreground bg-muted/10">
-                You haven't scheduled any carpool departures.
+              <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-card/50 flex flex-col items-center justify-center space-y-3">
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <Car className="size-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">No Scheduled Rides</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm">
+                    Heading somewhere on or around campus? Publish your route and share empty car seats with fellow students.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setIsPublishModalOpen(true)}
+                  className="text-xs h-8 gap-1.5 cursor-pointer mt-1"
+                >
+                  <Plus className="size-3.5" />
+                  <span>Offer a Ride</span>
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -639,9 +682,7 @@ export function RidePage() {
                             {new Date(ride.departure_time).toLocaleString()}
                           </CardDescription>
                         </div>
-                        <Badge variant="outline" className="text-[10px] capitalize">
-                          {ride.status}
-                        </Badge>
+                        <StatusBadge status={ride.status} showIcon />
                       </div>
                     </CardHeader>
                     <CardContent className="p-4 pt-1 space-y-1 text-xs text-muted-foreground">
@@ -652,10 +693,12 @@ export function RidePage() {
                       {ride.status === "scheduled" && (
                         <Button
                           size="sm"
+                          disabled={actionLoadingId === ride.id}
                           onClick={() => handleCompleteRide(ride.id)}
-                          className="text-xs h-8 cursor-pointer"
+                          className="text-xs h-8 cursor-pointer gap-1.5"
                         >
-                          Mark Completed
+                          {actionLoadingId === ride.id && <Loader2 className="size-3 animate-spin" />}
+                          <span>Mark Completed</span>
                         </Button>
                       )}
                     </CardFooter>
@@ -676,14 +719,19 @@ export function RidePage() {
                           <span className="font-semibold text-foreground">
                             {req.passenger?.full_name} ({req.seats_requested} seat{req.seats_requested > 1 ? "s" : ""})
                           </span>
-                          <Badge variant="secondary" className="text-[10px] capitalize">
-                            {req.status}
-                          </Badge>
+                          <StatusBadge status={req.status} showIcon />
                         </div>
                         <p className="text-muted-foreground text-[11px]">
                           Route: {req.ride?.origin_name} → {req.ride?.destination_name}
                         </p>
                         {req.pickup_note && <p className="italic text-muted-foreground text-[11px]">"{req.pickup_note}"</p>}
+                        {req.status === "accepted" && (
+                          <ContactHandoffCard
+                            service="ride"
+                            requestId={req.id}
+                            fallbackName={req.passenger?.full_name}
+                          />
+                        )}
                       </div>
 
                       {req.status === "accepted" && (
@@ -695,14 +743,15 @@ export function RidePage() {
                               setUpiPaymentData({
                                 amount: (req.ride?.price_per_seat || 0) * req.seats_requested,
                                 txId: req.id,
-                                payeeName: req.passenger?.full_name || "Student Peer",
+                                payeeName: profile?.full_name || "Driver",
+                                payeeUpi: profile?.upi_id || null,
                               })
                               setShowUPI(true)
                             }}
                             className="text-xs h-7 gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer"
                           >
                             <QrCode className="size-3" />
-                            <span>Settle via UPI</span>
+                            <span>Receive Payment (QR)</span>
                           </Button>
                           <Button
                             size="sm"
@@ -720,17 +769,21 @@ export function RidePage() {
                           <Button
                             variant="destructive"
                             size="sm"
+                            disabled={actionLoadingId === req.id}
                             onClick={() => handleRejectRequest(req.id)}
-                            className="text-xs h-7 cursor-pointer"
+                            className="text-xs h-7 cursor-pointer gap-1.5"
                           >
-                            Decline
+                            {actionLoadingId === req.id && <Loader2 className="size-3 animate-spin" />}
+                            <span>Decline</span>
                           </Button>
                           <Button
                             size="sm"
+                            disabled={actionLoadingId === req.id}
                             onClick={() => handleAcceptRequest(req.id)}
-                            className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                            className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer gap-1.5"
                           >
-                            Accept
+                            {actionLoadingId === req.id && <Loader2 className="size-3 animate-spin" />}
+                            <span>Accept</span>
                           </Button>
                         </div>
                       )}
@@ -749,8 +802,24 @@ export function RidePage() {
             </h2>
 
             {mySentRequests.length === 0 ? (
-              <div className="p-6 text-center border border-dashed border-border rounded-xl text-xs text-muted-foreground bg-muted/10">
-                You haven't requested seats in any carpools.
+              <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-card/50 flex flex-col items-center justify-center space-y-3">
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <Users className="size-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">No Carpool Reservations</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm">
+                    Looking for a ride? Search active routes and reserve seats with verified campus drivers.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setActiveTab("browse")}
+                  className="text-xs h-8 gap-1.5 cursor-pointer mt-1"
+                >
+                  <Search className="size-3.5" />
+                  <span>Find a Ride</span>
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -766,17 +835,19 @@ export function RidePage() {
                             {req.ride?.departure_time ? new Date(req.ride.departure_time).toLocaleString() : ""}
                           </CardDescription>
                         </div>
-                        <Badge
-                          variant={req.status === "accepted" ? "default" : req.status === "pending" ? "secondary" : "outline"}
-                          className="text-[10px] capitalize"
-                        >
-                          {req.status}
-                        </Badge>
+                        <StatusBadge status={req.status} showIcon />
                       </div>
                     </CardHeader>
                     <CardContent className="p-4 pt-1 space-y-1 text-xs text-muted-foreground">
                       <p>Seats booked: <span className="font-semibold text-foreground">{req.seats_requested}</span></p>
                       <p>Cost contribution: <span className="font-semibold text-foreground">₹{(req.ride?.price_per_seat || 0) * req.seats_requested}</span></p>
+                      {req.status === "accepted" && (
+                        <ContactHandoffCard
+                          service="ride"
+                          requestId={req.id}
+                          fallbackName={req.ride?.driver?.full_name}
+                        />
+                      )}
                     </CardContent>
                     <CardFooter className="p-4 pt-2 border-t border-border/60 flex items-center justify-end gap-2 flex-wrap">
                       {req.status === "pending" && (
@@ -802,14 +873,15 @@ export function RidePage() {
                               setUpiPaymentData({
                                 amount: (req.ride?.price_per_seat || 0) * req.seats_requested,
                                 txId: req.id,
-                                payeeName: "Student Driver",
+                                payeeName: req.ride?.driver?.full_name || "Driver",
+                                payeeUpi: req.ride?.driver?.upi_id || null,
                               })
                               setShowUPI(true)
                             }}
                             className="text-xs h-7 gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer"
                           >
                             <QrCode className="size-3" />
-                            <span>Settle via UPI</span>
+                            <span>Pay via UPI</span>
                           </Button>
                           <Button
                             size="sm"
@@ -1217,7 +1289,10 @@ export function RidePage() {
           requestId={cancelModalState.requestId}
           title={cancelModalState.title}
           onSuccess={async () => {
+            const cancelledId = cancelModalState.requestId
             setCancelModalState({ isOpen: false, requestId: "", title: "" })
+            setMySentRequests((prev) => prev.filter((req) => req.id !== cancelledId))
+            setIncomingRequests((prev) => prev.filter((req) => req.id !== cancelledId))
             await fetchUserRides()
             await fetchRides()
           }}
@@ -1243,7 +1318,7 @@ export function RidePage() {
       <UPIPaymentModal
         isOpen={showUPI}
         onClose={() => setShowUPI(false)}
-        payeeUpi="test@upi"
+        payeeUpi={upiPaymentData.payeeUpi || null}
         payeeName={upiPaymentData.payeeName || "Student Peer"}
         amount={upiPaymentData.amount}
         txId={upiPaymentData.txId}

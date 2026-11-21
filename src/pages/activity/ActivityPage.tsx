@@ -4,8 +4,8 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "@/context/RouterContext"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
+import { StatusBadge } from "@/components/ui/StatusBadge"
 import {
   Activity,
   KeyRound,
@@ -343,10 +343,6 @@ export function ActivityPage() {
                 ? Car
                 : Package
 
-            const isAccepted = item.status === "accepted" || item.status === "active" || item.status === "in_transit"
-            const isCompleted = item.status === "completed" || item.status === "delivered"
-            const isPending = item.status === "pending" || item.status === "open" || item.status === "scheduled"
-
             return (
               <Card key={`${item.service}-${item.id}`} className="border-border/80 shadow-xs hover:border-primary/40 transition-colors">
                 <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -386,12 +382,7 @@ export function ActivityPage() {
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-0 border-border/40">
-                    <Badge
-                      variant={isAccepted ? "default" : isCompleted ? "default" : isPending ? "secondary" : "destructive"}
-                      className="text-[10px] capitalize font-semibold"
-                    >
-                      {item.status.replace(/_/g, " ")}
-                    </Badge>
+                    <StatusBadge status={item.status} showIcon />
 
                     <Button
                       variant="ghost"

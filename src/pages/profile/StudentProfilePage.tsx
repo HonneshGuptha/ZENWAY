@@ -25,30 +25,84 @@ import {
   LogOut,
   FileCheck2,
   UserCheck,
+  QrCode,
 } from "lucide-react"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
 
 export function StudentProfilePage() {
-  const { user, profile, latestVerification, refreshProfile, signOut, isVerified, isPending, isUnverified, isSuspended, isAdmin } = useAuth()
+  const {
+    user,
+    profile,
+    isLoading,
+    latestVerification,
+    refreshProfile,
+    signOut,
+    isVerified,
+    isPending,
+    isUnverified,
+    isSuspended,
+    isAdmin,
+  } = useAuth()
   const { navigate } = useRouter()
 
   const [fullName, setFullName] = React.useState(profile?.full_name || "")
   const [phoneNumber, setPhoneNumber] = React.useState(profile?.phone_number || "")
   const [universityName, setUniversityName] = React.useState(profile?.university_name || "")
   const [bio, setBio] = React.useState(profile?.bio || "")
+  const [upiId, setUpiId] = React.useState(profile?.upi_id || "")
   const [isSaving, setIsSaving] = React.useState(false)
+  const [isSavingUpi, setIsSavingUpi] = React.useState(false)
   const [saveSuccess, setSaveSuccess] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     if (profile) {
-      setFullName(profile.full_name || "")
-      setPhoneNumber(profile.phone_number || "")
-      setUniversityName(profile.university_name || "")
-      setBio(profile.bio || "")
+      setFullName(profile.full_name ?? "")
+      setPhoneNumber(profile.phone_number ?? "")
+      setUniversityName(profile.university_name ?? "")
+      setBio(profile.bio ?? "")
+      setUpiId(profile.upi_id ?? "")
     }
-  }, [profile])
+  }, [
+    profile?.id,
+    profile?.full_name,
+    profile?.phone_number,
+    profile?.university_name,
+    profile?.bio,
+    profile?.upi_id,
+  ])
+
+  const handleSaveUpi = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!user) return
+
+    const trimmed = upiId.trim()
+    if (trimmed && !/^[a-zA-Z0-9._-]{2,32}@[a-zA-Z]{2,15}$/.test(trimmed)) {
+      toast.error("Please enter a valid UPI ID (e.g. handle@okhdfcbank or 9876543210@paytm)")
+      return
+    }
+
+    try {
+      setIsSavingUpi(true)
+      const { error: upiErr } = await supabase
+        .from("profiles")
+        .update({
+          upi_id: trimmed || null,
+        })
+        .eq("id", user.id)
+
+      if (upiErr) throw upiErr
+
+      await refreshProfile()
+      toast.success("UPI ID saved successfully")
+    } catch (err: any) {
+      console.error("[Profile] Update UPI error:", err)
+      toast.error(err.message || "Failed to update UPI ID.")
+    } finally {
+      setIsSavingUpi(false)
+    }
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,15 +115,33 @@ export function StudentProfilePage() {
       return
     }
 
+    let cleanPhone: string | null = null
+    if (phoneNumber.trim()) {
+      const digits = phoneNumber.replace(/\D/g, "")
+      const tenDigit = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits
+      if (tenDigit.length !== 10) {
+        setErrorMessage("Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).")
+        return
+      }
+      cleanPhone = tenDigit
+    }
+
+    const trimmedUpi = upiId.trim()
+    if (trimmedUpi && !/^[a-zA-Z0-9._-]{2,32}@[a-zA-Z]{2,15}$/.test(trimmedUpi)) {
+      setErrorMessage("Please enter a valid UPI ID format (e.g. handle@bank).")
+      return
+    }
+
     try {
       setIsSaving(true)
       const { error: updateErr } = await supabase
         .from("profiles")
         .update({
           full_name: fullName.trim(),
-          phone_number: phoneNumber.trim() || null,
+          phone_number: cleanPhone,
           university_name: universityName.trim() || null,
           bio: bio.trim() || null,
+          upi_id: trimmedUpi || null,
         })
         .eq("id", user.id)
 
@@ -95,6 +167,29 @@ export function StudentProfilePage() {
     navigate("/")
   }
 
+  if (!user && !isLoading) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-3 text-center p-6">
+        <AlertCircle className="size-8 text-muted-foreground" />
+        <h2 className="text-sm font-semibold text-foreground">Please sign in to view your profile</h2>
+        <Button size="sm" onClick={() => navigate("/login")} className="cursor-pointer">
+          Go to Sign In
+        </Button>
+      </div>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-3">
+        <Loader2 className="size-8 text-primary animate-spin" />
+        <span className="text-xs font-mono text-muted-foreground uppercase">
+          Loading student profile...
+        </span>
+      </div>
+    )
+  }
+
   return (
     <motion.div
       variants={pageTransitionVariants}
@@ -110,6 +205,7 @@ export function StudentProfilePage() {
             Student Profile
           </h1>
           <p className="text-xs text-muted-foreground">
+            {profile?.university_name ? `${(profile?.university_name || "").trim()} • ` : ""}
             Manage your campus credentials and account preferences
           </p>
         </div>
@@ -192,12 +288,19 @@ export function StudentProfilePage() {
       <Card className="border-border/80 shadow-sm bg-card">
         <form onSubmit={handleSave}>
           <CardHeader>
-            <CardTitle className="font-heading text-lg font-semibold text-foreground">
-              Account Information
-            </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              University contact information and public student details
-            </CardDescription>
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-sm select-none">
+                {((profile?.full_name || "ST").trim().substring(0, 2) || "ST").toUpperCase()}
+              </div>
+              <div>
+                <CardTitle className="font-heading text-lg font-semibold text-foreground">
+                  {profile?.full_name || "Account Information"}
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  {profile?.university_name || "University contact information and public student details"}
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
 
           <CardContent className="space-y-4">
@@ -251,19 +354,75 @@ export function StudentProfilePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="prof-phone">Contact Phone</Label>
-                <div className="relative">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="prof-phone">WhatsApp & Calling Phone</Label>
+                  <span className="text-[11px] text-muted-foreground font-medium">10-Digit Mobile</span>
+                </div>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3 flex items-center gap-1.5 pointer-events-none select-none text-muted-foreground">
+                    <Phone className="size-3.5" />
+                    <span className="text-xs font-semibold text-foreground font-mono">+91</span>
+                  </div>
                   <Input
                     id="prof-phone"
                     type="tel"
-                    placeholder="+1 (555) 000-0000"
+                    maxLength={10}
+                    placeholder="98765 43210"
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    onChange={(e) => {
+                      const digitsOnly = e.target.value.replace(/\D/g, "")
+                      setPhoneNumber(digitsOnly.slice(0, 10))
+                    }}
                     disabled={isSaving}
-                    className="pl-9 h-10 text-sm"
+                    className="pl-16 h-10 text-sm font-mono tracking-wide"
                   />
-                  <Phone className="size-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
                 </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Shared securely via WhatsApp & Call only with confirmed exchange partners.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 p-3 rounded-xl border border-border/60 bg-muted/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="prof-upi" className="font-semibold text-foreground">UPI ID</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    {profile?.upi_id ? `Linked: ${profile?.upi_id} • ` : ""}Used for peer settlements and direct UPI QR payments in RIDE and RENT.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleSaveUpi()}
+                  disabled={isSaving || isSavingUpi}
+                  className="h-7 px-3 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer gap-1.5"
+                >
+                  {isSavingUpi ? (
+                    <>
+                      <Loader2 className="size-3 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="size-3" />
+                      <span>Save UPI</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="relative mt-2">
+                <Input
+                  id="prof-upi"
+                  type="text"
+                  placeholder="e.g. handle@okhdfcbank"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  disabled={isSaving || isSavingUpi}
+                  className="pl-9 h-10 text-sm"
+                />
+                <QrCode className="size-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
               </div>
             </div>
 

@@ -39,6 +39,8 @@ import { StudentPublicProfileModal } from "@/components/profile/StudentPublicPro
 import { ReportModal } from "@/components/safety/ReportModal"
 import { CancellationModal } from "@/components/exchange/CancellationModal"
 import { DisputeModal } from "@/components/exchange/DisputeModal"
+import { ContactHandoffCard } from "@/components/ContactHandoffCard"
+import { StatusBadge } from "@/components/ui/StatusBadge"
 
 type PackageSize = "envelope" | "small_box" | "backpack" | "medium_box"
 
@@ -95,6 +97,7 @@ export function CarryPage() {
   const [mySentOffers, setMySentOffers] = React.useState<CarryOfferItem[]>([])
   const [myRequests, setMyRequests] = React.useState<CarryRequestWithDetails[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null)
 
   // Filters
   const [selectedSize, setSelectedSize] = React.useState<string>("all")
@@ -336,6 +339,7 @@ export function CarryPage() {
   // Accept Offer Handler (Calls atomic accept_carry_offer RPC)
   const handleAcceptOffer = async (offerId: string) => {
     try {
+      setActionLoadingId(offerId)
       const { error } = await supabase.rpc("accept_carry_offer", {
         p_offer_id: offerId,
       })
@@ -346,12 +350,15 @@ export function CarryPage() {
     } catch (err: any) {
       console.error("[CarryPage] Accept offer error:", err)
       toast.error(err.message || "Failed to accept offer.")
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
   // Update Status: In Transit
   const handleMarkInTransit = async (requestId: string) => {
     try {
+      setActionLoadingId(requestId)
       const { error } = await supabase
         .from("carry_requests")
         .update({ status: "in_transit" })
@@ -362,12 +369,15 @@ export function CarryPage() {
     } catch (err: any) {
       console.error("[CarryPage] In-transit error:", err)
       toast.error(err.message || "Failed to update status.")
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
   // Update Status: Delivered
   const handleMarkDelivered = async (requestId: string) => {
     try {
+      setActionLoadingId(requestId)
       const { error } = await supabase
         .from("carry_requests")
         .update({ status: "delivered" })
@@ -378,6 +388,8 @@ export function CarryPage() {
     } catch (err: any) {
       console.error("[CarryPage] Delivered error:", err)
       toast.error(err.message || "Failed to mark delivered.")
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
@@ -668,8 +680,24 @@ export function CarryPage() {
             </h2>
 
             {myRequests.length === 0 ? (
-              <div className="p-6 text-center border border-dashed border-border rounded-xl text-xs text-muted-foreground bg-muted/10">
-                You haven't posted any delivery requests.
+              <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-card/50 flex flex-col items-center justify-center space-y-3">
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <Package className="size-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">No Delivery Requests Posted</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm">
+                    Need textbooks, lab gear, or dorm items transported across campus? Post a delivery request for nearby peers.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="text-xs h-8 gap-1.5 cursor-pointer mt-1"
+                >
+                  <Plus className="size-3.5" />
+                  <span>Request Peer Delivery</span>
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -683,17 +711,18 @@ export function CarryPage() {
                             {req.pickup_location} → {req.delivery_location}
                           </CardDescription>
                         </div>
-                        <Badge
-                          variant={req.status === "open" ? "secondary" : "default"}
-                          className="text-[10px] capitalize font-bold"
-                        >
-                          {req.status.replace(/_/g, " ")}
-                        </Badge>
+                        <StatusBadge status={req.status} showIcon />
                       </div>
                     </CardHeader>
                     <CardContent className="p-4 pt-1 space-y-1 text-xs text-muted-foreground">
                       <p>Reward fee: <span className="font-semibold text-foreground">₹{req.reward_amount}</span></p>
                       <p>Package size: <span className="capitalize">{req.item_size.replace(/_/g, " ")}</span></p>
+                      {(req.status === "accepted" || req.status === "in_transit" || req.status === "delivered") && (
+                        <ContactHandoffCard
+                          service="carry"
+                          requestId={req.id}
+                        />
+                      )}
                     </CardContent>
                     <CardFooter className="p-4 pt-2 border-t border-border/60 flex items-center justify-end gap-2 flex-wrap">
                       {req.status === "open" && (
@@ -714,10 +743,12 @@ export function CarryPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <Button
                             size="sm"
+                            disabled={actionLoadingId === req.id}
                             onClick={() => handleMarkInTransit(req.id)}
-                            className="text-xs h-8 cursor-pointer"
+                            className="text-xs h-8 cursor-pointer gap-1.5"
                           >
-                            Mark In-Transit
+                            {actionLoadingId === req.id && <Loader2 className="size-3 animate-spin" />}
+                            <span>Mark In-Transit</span>
                           </Button>
                           <Button
                             variant="outline"
@@ -739,10 +770,12 @@ export function CarryPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <Button
                             size="sm"
+                            disabled={actionLoadingId === req.id}
                             onClick={() => handleMarkDelivered(req.id)}
-                            className="text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                            className="text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer gap-1.5"
                           >
-                            Confirm Delivery Handoff
+                            {actionLoadingId === req.id && <Loader2 className="size-3 animate-spin" />}
+                            <span>Confirm Delivery Handoff</span>
                           </Button>
                           <Button
                             variant="outline"
@@ -789,9 +822,7 @@ export function CarryPage() {
                           <span className="font-semibold text-foreground">
                             Carrier: {offer.carrier?.full_name}
                           </span>
-                          <Badge variant="secondary" className="text-[10px] capitalize">
-                            {offer.status}
-                          </Badge>
+                          <StatusBadge status={offer.status} showIcon />
                         </div>
                         <p className="text-muted-foreground text-[11px]">
                           Item: {offer.request?.item_title}
@@ -803,10 +834,12 @@ export function CarryPage() {
                         <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60 mt-2">
                           <Button
                             size="sm"
+                            disabled={actionLoadingId === offer.id}
                             onClick={() => handleAcceptOffer(offer.id)}
-                            className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                            className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer gap-1.5"
                           >
-                            Accept Carrier
+                            {actionLoadingId === offer.id && <Loader2 className="size-3 animate-spin" />}
+                            <span>Accept Carrier</span>
                           </Button>
                         </div>
                       )}
@@ -825,8 +858,24 @@ export function CarryPage() {
             </h2>
 
             {mySentOffers.length === 0 ? (
-              <div className="p-6 text-center border border-dashed border-border rounded-xl text-xs text-muted-foreground bg-muted/10">
-                You haven't submitted any offers to carry packages.
+              <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-card/50 flex flex-col items-center justify-center space-y-3">
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <Truck className="size-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">No Delivery Offers Submitted</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm">
+                    Heading across campus? Check open delivery requests and earn rewards by carrying items along your route.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setActiveTab("browse")}
+                  className="text-xs h-8 gap-1.5 cursor-pointer mt-1"
+                >
+                  <Search className="size-3.5" />
+                  <span>Browse Campus Requests</span>
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -840,17 +889,18 @@ export function CarryPage() {
                             {offer.request?.pickup_location} → {offer.request?.delivery_location}
                           </CardDescription>
                         </div>
-                        <Badge
-                          variant={offer.status === "accepted" ? "default" : "outline"}
-                          className="text-[10px] capitalize font-semibold"
-                        >
-                          {offer.status}
-                        </Badge>
+                        <StatusBadge status={offer.status} showIcon />
                       </div>
                     </CardHeader>
                     <CardContent className="p-4 pt-1 space-y-1 text-xs text-muted-foreground">
                       <p>Fee reward: <span className="font-semibold text-foreground">₹{offer.request?.reward_amount}</span></p>
                       {offer.message && <p className="italic text-[11px]">"{offer.message}"</p>}
+                      {offer.status === "accepted" && (
+                        <ContactHandoffCard
+                          service="carry"
+                          requestId={offer.request_id}
+                        />
+                      )}
                     </CardContent>
                     {offer.status === "accepted" && (
                       <CardFooter className="p-4 pt-2 border-t border-border/60 flex items-center justify-end">

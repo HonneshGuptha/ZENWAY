@@ -25,6 +25,7 @@ import {
   X,
   Info,
   LogOut,
+  QrCode,
 } from "lucide-react"
 import type { Database } from "@/types/database.types"
 import { pageTransitionVariants } from "@/lib/motion"
@@ -32,16 +33,23 @@ import { pageTransitionVariants } from "@/lib/motion"
 type DocumentType = Database["public"]["Enums"]["document_type"]
 
 export function VerifyStudentPage() {
-  const { user, latestVerification, refreshProfile, isVerified, isPending, signOut } = useAuth()
+  const { user, profile, latestVerification, refreshProfile, isVerified, isPending, signOut } = useAuth()
   const { navigate } = useRouter()
 
   const [studentIdNumber, setStudentIdNumber] = React.useState("")
   const [documentType, setDocumentType] = React.useState<DocumentType>("student_id_card")
+  const [upiId, setUpiId] = React.useState(profile?.upi_id || "")
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
   const [fileError, setFileError] = React.useState<string | null>(null)
   const [isUploading, setIsUploading] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [dragActive, setDragActive] = React.useState(false)
+
+  React.useEffect(() => {
+    if (profile?.upi_id && !upiId) {
+      setUpiId(profile.upi_id)
+    }
+  }, [profile?.upi_id, upiId])
 
   // If already verified or currently pending, forward to status page
   React.useEffect(() => {
@@ -118,6 +126,17 @@ export function VerifyStudentPage() {
       return
     }
 
+    const trimmedUpi = upiId.trim()
+    if (!trimmedUpi) {
+      setErrorMessage("Please enter your UPI ID. It is required for campus peer-to-peer payments.")
+      return
+    }
+
+    if (!/^[a-zA-Z0-9._-]{2,32}@[a-zA-Z]{2,15}$/.test(trimmedUpi)) {
+      setErrorMessage("Please enter a valid UPI ID (e.g. yourname@okhdfcbank or 9876543210@paytm).")
+      return
+    }
+
     try {
       setIsUploading(true)
 
@@ -152,10 +171,23 @@ export function VerifyStudentPage() {
         throw new Error(`Failed to record verification submission: ${insertErr.message}`)
       }
 
-      // 3. Refresh user session state
+      // 3. Save provided UPI ID to profiles table
+      const { error: upiErr } = await supabase
+        .from("profiles")
+        .update({
+          upi_id: trimmedUpi,
+        })
+        .eq("id", user.id)
+
+      if (upiErr) {
+        console.error("[VerifyStudent] Profile UPI update error:", upiErr)
+        throw new Error(`Failed to save UPI ID: ${upiErr.message}`)
+      }
+
+      // 4. Refresh user session state
       await refreshProfile()
 
-      // 4. Navigate to status page
+      // 5. Navigate to status page
       navigate("/verification-status")
     } catch (err: any) {
       console.error("[VerifyStudent] Submission error:", err)
@@ -319,6 +351,29 @@ export function VerifyStudentPage() {
                 {fileError && (
                   <p className="text-[11px] text-destructive font-medium">{fileError}</p>
                 )}
+              </div>
+
+              {/* UPI ID Field (Required for P2P Settlements) */}
+              <div className="space-y-1.5 p-3.5 rounded-xl border border-border/80 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <QrCode className="size-4 text-primary" />
+                  <Label htmlFor="verif-upi-id" className="font-semibold text-foreground">
+                    UPI ID (Required for Peer Settlement) *
+                  </Label>
+                </div>
+                <Input
+                  id="verif-upi-id"
+                  type="text"
+                  required
+                  placeholder="e.g. handle@okhdfcbank or 9876543210@paytm"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  disabled={isUploading}
+                  className="h-10 text-sm font-mono bg-background"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Your personal UPI handle will be used for direct peer-to-peer payments and QR code settlement in RIDE and RENT exchanges once approved.
+                </p>
               </div>
 
               {/* Privacy Notice */}

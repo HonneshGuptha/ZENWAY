@@ -1,6 +1,9 @@
 -- Migration: 20261110000014_admin_portal_and_access_key.sql
 -- Description: Dedicated admin portal infrastructure, access key authentication, student ID review RPCs, user moderation, and platform statistics.
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+SET search_path TO public, extensions;
+
 -- ============================================================================
 -- 1. Admin Access Key Configuration (Singleton Secure Table)
 -- ============================================================================
@@ -13,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.admin_access_config (
 
 -- Seed initial access key '2077' using crypt with blowfish salt
 INSERT INTO public.admin_access_config (id, access_key_hash)
-VALUES (true, crypt('2077', gen_salt('bf')))
+VALUES (true, extensions.crypt('2077', extensions.gen_salt('bf')))
 ON CONFLICT (id) DO NOTHING;
 
 -- Restrict direct access from client roles
@@ -46,9 +49,9 @@ BEGIN
         RETURN false;
     END IF;
 
-    RETURN (v_stored_hash = crypt(trim(p_key), v_stored_hash));
+    RETURN (v_stored_hash = extensions.crypt(trim(p_key), v_stored_hash));
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, extensions, pg_temp;
 
 REVOKE EXECUTE ON FUNCTION public.verify_admin_access_key(text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.verify_admin_access_key(text) TO authenticated, service_role;
@@ -74,12 +77,12 @@ BEGIN
     FROM public.admin_access_config
     WHERE id = true;
 
-    IF v_stored_hash IS DISTINCT FROM crypt(trim(p_old_key), v_stored_hash) THEN
+    IF v_stored_hash IS DISTINCT FROM extensions.crypt(trim(p_old_key), v_stored_hash) THEN
         RAISE EXCEPTION 'Authentication Failed: Current access key is incorrect.';
     END IF;
 
     UPDATE public.admin_access_config
-    SET access_key_hash = crypt(trim(p_new_key), gen_salt('bf')),
+    SET access_key_hash = extensions.crypt(trim(p_new_key), extensions.gen_salt('bf')),
         updated_at = now(),
         updated_by = auth.uid()
     WHERE id = true;
@@ -94,7 +97,7 @@ BEGIN
 
     RETURN true;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions, pg_temp;
 
 REVOKE EXECUTE ON FUNCTION public.update_admin_access_key(text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.update_admin_access_key(text, text) TO authenticated, service_role;
@@ -193,7 +196,7 @@ BEGIN
 
     RETURN true;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions, pg_temp;
 
 REVOKE EXECUTE ON FUNCTION public.review_student_verification(uuid, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.review_student_verification(uuid, text, text) TO authenticated, service_role;
@@ -298,7 +301,7 @@ BEGIN
 
     RETURN true;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions, pg_temp;
 
 REVOKE EXECUTE ON FUNCTION public.toggle_user_suspension(uuid, boolean, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.toggle_user_suspension(uuid, boolean, text) TO authenticated, service_role;
@@ -350,7 +353,7 @@ BEGIN
 
     RETURN true;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions, pg_temp;
 
 REVOKE EXECUTE ON FUNCTION public.admin_moderate_listing(text, uuid, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.admin_moderate_listing(text, uuid, text, text) TO authenticated, service_role;

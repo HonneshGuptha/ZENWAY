@@ -42,6 +42,8 @@ import { ReportModal } from "@/components/safety/ReportModal"
 import { CancellationModal } from "@/components/exchange/CancellationModal"
 import { DisputeModal } from "@/components/exchange/DisputeModal"
 import { UPIPaymentModal } from "@/components/UPIPaymentModal"
+import { ContactHandoffCard } from "@/components/ContactHandoffCard"
+import { StatusBadge } from "@/components/ui/StatusBadge"
 
 type VehicleType = "bicycle" | "e_scooter" | "car" | "motorcycle"
 
@@ -83,21 +85,27 @@ interface RentalRequestItem {
     hourly_rate: number | null
     pickup_location: string
     owner_id?: string
+    owner?: {
+      full_name?: string | null
+      upi_id?: string | null
+    } | null
   }
   renter?: {
     full_name: string | null
     university_name: string | null
+    upi_id?: string | null
   }
 }
 
 export function RentPage() {
-  const { user, isVerified } = useAuth()
+  const { user, profile, isVerified } = useAuth()
 
   const [activeTab, setActiveTab] = React.useState<"browse" | "manage">("browse")
   const [vehicles, setVehicles] = React.useState<VehicleWithDetails[]>([])
   const [incomingRequests, setIncomingRequests] = React.useState<RentalRequestItem[]>([])
   const [mySentRequests, setMySentRequests] = React.useState<RentalRequestItem[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null)
 
   // Filters
   const [selectedType, setSelectedType] = React.useState<string>("all")
@@ -148,10 +156,11 @@ export function RentPage() {
 
   // UPI Payment Modal
   const [showUPI, setShowUPI] = React.useState(false)
-  const [upiPaymentData, setUpiPaymentData] = React.useState<{ amount: number; txId: string; payeeName?: string }>({
+  const [upiPaymentData, setUpiPaymentData] = React.useState<{ amount: number; txId: string; payeeName?: string; payeeUpi?: string | null }>({
     amount: 0,
     txId: "",
     payeeName: "Student Peer",
+    payeeUpi: null,
   })
 
   // Fetch Available Vehicles
@@ -223,8 +232,8 @@ export function RentPage() {
           .from("rental_requests")
           .select(`
             id, vehicle_id, renter_id, owner_id, start_time, end_time, total_price, deposit_amount, status, created_at,
-            vehicle:vehicles(title, type, hourly_rate, pickup_location, owner_id),
-            renter:public_profiles!rental_requests_renter_id_fkey(full_name, university_name)
+            vehicle:vehicles(title, type, hourly_rate, pickup_location, owner_id, owner:public_profiles!vehicles_owner_id_fkey(full_name, upi_id)),
+            renter:public_profiles!rental_requests_renter_id_fkey(full_name, university_name, upi_id)
           `)
           .in("vehicle_id", myVehicleIds)
           .order("created_at", { ascending: false })
@@ -239,8 +248,8 @@ export function RentPage() {
         .from("rental_requests")
         .select(`
           id, vehicle_id, renter_id, owner_id, start_time, end_time, total_price, deposit_amount, status, created_at,
-          vehicle:vehicles(title, type, hourly_rate, pickup_location, owner_id),
-          renter:public_profiles!rental_requests_renter_id_fkey(full_name, university_name)
+          vehicle:vehicles(title, type, hourly_rate, pickup_location, owner_id, owner:public_profiles!vehicles_owner_id_fkey(full_name, upi_id)),
+          renter:public_profiles!rental_requests_renter_id_fkey(full_name, university_name, upi_id)
         `)
         .eq("renter_id", user.id)
         .order("created_at", { ascending: false })
@@ -397,48 +406,67 @@ export function RentPage() {
   // Owner Action: Accept Request (Calls atomic accept_rental_request RPC)
   const handleAcceptRequest = async (requestId: string) => {
     try {
+      setActionLoadingId(requestId)
       const { error } = await supabase.rpc("accept_rental_request", {
         p_request_id: requestId,
       })
       if (error) throw error
       toast.success("Rental request accepted! Conflicting requests auto-resolved.")
+      setIncomingRequests((prev) =>
+        prev.map((req) => (req.id === requestId ? { ...req, status: "accepted" } : req))
+      )
       await fetchUserRentals()
       await fetchVehicles()
     } catch (err: any) {
       console.error("[RentPage] Accept request error:", err)
       toast.error(err.message || "Failed to accept rental request.")
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
   // Owner Action: Reject Request
   const handleRejectRequest = async (requestId: string) => {
     try {
+      setActionLoadingId(requestId)
       const { error } = await supabase
         .from("rental_requests")
         .update({ status: "rejected" })
         .eq("id", requestId)
       if (error) throw error
       toast.success("Rental request rejected.")
+      setIncomingRequests((prev) => prev.filter((req) => req.id !== requestId))
       await fetchUserRentals()
     } catch (err: any) {
       console.error("[RentPage] Reject error:", err)
       toast.error(err.message || "Failed to reject request.")
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
   // Mark Completed
   const handleCompleteRental = async (requestId: string) => {
     try {
+      setActionLoadingId(requestId)
       const { error } = await supabase
         .from("rental_requests")
         .update({ status: "completed" })
         .eq("id", requestId)
       if (error) throw error
       toast.success("Rental marked as completed!")
+      setIncomingRequests((prev) =>
+        prev.map((req) => (req.id === requestId ? { ...req, status: "completed" } : req))
+      )
+      setMySentRequests((prev) =>
+        prev.map((req) => (req.id === requestId ? { ...req, status: "completed" } : req))
+      )
       await fetchUserRentals()
     } catch (err: any) {
       console.error("[RentPage] Complete error:", err)
       toast.error(err.message || "Failed to complete rental.")
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
@@ -743,8 +771,25 @@ export function RentPage() {
             </h2>
 
             {incomingRequests.length === 0 ? (
-              <div className="p-6 text-center border border-dashed border-border rounded-xl text-xs text-muted-foreground bg-muted/10">
-                No incoming booking requests for your listed vehicles.
+              <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-card/50 flex flex-col items-center justify-center space-y-3">
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <KeyRound className="size-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">No Incoming Booking Requests</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm">
+                    When students request to rent your listed vehicles, their requests will appear here for your review and approval.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsListModalOpen(true)}
+                  className="text-xs h-8 gap-1.5 cursor-pointer mt-1"
+                >
+                  <Plus className="size-3.5" />
+                  <span>List Another Vehicle</span>
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -758,12 +803,7 @@ export function RentPage() {
                             Renter: {req.renter?.full_name || "Student"} ({req.renter?.university_name || "Campus"})
                           </CardDescription>
                         </div>
-                        <Badge
-                          variant={req.status === "accepted" ? "default" : req.status === "pending" ? "secondary" : "outline"}
-                          className="text-[10px] capitalize"
-                        >
-                          {req.status}
-                        </Badge>
+                        <StatusBadge status={req.status} showIcon />
                       </div>
                     </CardHeader>
                     <CardContent className="p-4 pt-1 space-y-1.5 text-xs text-muted-foreground">
@@ -772,29 +812,40 @@ export function RentPage() {
                         <span>{new Date(req.start_time).toLocaleString()} → {new Date(req.end_time).toLocaleString()}</span>
                       </div>
                       <p className="font-semibold text-foreground">Total: ₹{req.total_price}</p>
+                      {(req.status === "accepted" || req.status === "active") && (
+                        <ContactHandoffCard
+                          service="rental"
+                          requestId={req.id}
+                          fallbackName={req.renter?.full_name}
+                        />
+                      )}
                     </CardContent>
-                    <CardFooter className="p-4 pt-2 border-t border-border/60 flex items-center justify-end gap-2">
+                    <CardFooter className="p-4 pt-2 border-t border-border/60 flex items-center justify-end gap-2 flex-wrap">
                       {req.status === "pending" && (
                         <>
                           <Button
                             variant="destructive"
                             size="sm"
+                            disabled={actionLoadingId === req.id}
                             onClick={() => handleRejectRequest(req.id)}
-                            className="text-xs h-8 cursor-pointer"
+                            className="text-xs h-8 cursor-pointer gap-1.5"
                           >
-                            Reject
+                            {actionLoadingId === req.id && <Loader2 className="size-3 animate-spin" />}
+                            <span>Reject</span>
                           </Button>
                           <Button
                             size="sm"
+                            disabled={actionLoadingId === req.id}
                             onClick={() => handleAcceptRequest(req.id)}
-                            className="text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                            className="text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer gap-1.5"
                           >
-                            Accept Request
+                            {actionLoadingId === req.id && <Loader2 className="size-3 animate-spin" />}
+                            <span>Accept Request</span>
                           </Button>
                         </>
                       )}
                       {req.status === "accepted" && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Button
                             size="sm"
                             variant="outline"
@@ -802,14 +853,15 @@ export function RentPage() {
                               setUpiPaymentData({
                                 amount: req.total_price || 0,
                                 txId: req.id,
-                                payeeName: req.renter?.full_name || "Student Peer",
+                                payeeName: profile?.full_name || "Vehicle Owner",
+                                payeeUpi: profile?.upi_id || null,
                               })
                               setShowUPI(true)
                             }}
                             className="text-xs h-8 gap-1.5 cursor-pointer text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
                           >
                             <QrCode className="size-3.5" />
-                            <span>Settle via UPI</span>
+                            <span>Receive Payment (QR)</span>
                           </Button>
                           <Button
                             size="sm"
@@ -822,10 +874,12 @@ export function RentPage() {
                           </Button>
                           <Button
                             size="sm"
+                            disabled={actionLoadingId === req.id}
                             onClick={() => handleCompleteRental(req.id)}
-                            className="text-xs h-8 cursor-pointer"
+                            className="text-xs h-8 cursor-pointer gap-1.5"
                           >
-                            Mark Completed
+                            {actionLoadingId === req.id && <Loader2 className="size-3 animate-spin" />}
+                            <span>Mark Completed</span>
                           </Button>
                         </div>
                       )}
@@ -844,8 +898,24 @@ export function RentPage() {
             </h2>
 
             {mySentRequests.length === 0 ? (
-              <div className="p-6 text-center border border-dashed border-border rounded-xl text-xs text-muted-foreground bg-muted/10">
-                You haven't submitted any vehicle rental requests yet.
+              <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-card/50 flex flex-col items-center justify-center space-y-3">
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <Bike className="size-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">No Active Rental Requests</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm">
+                    You haven't requested any vehicles yet. Find bicycles, e-scooters, and motorcycles available on your campus.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setActiveTab("browse")}
+                  className="text-xs h-8 gap-1.5 cursor-pointer mt-1"
+                >
+                  <Search className="size-3.5" />
+                  <span>Browse Campus Vehicles</span>
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -860,12 +930,7 @@ export function RentPage() {
                             <span>{req.vehicle?.pickup_location}</span>
                           </CardDescription>
                         </div>
-                        <Badge
-                          variant={req.status === "accepted" ? "default" : req.status === "pending" ? "secondary" : "outline"}
-                          className="text-[10px] capitalize"
-                        >
-                          {req.status}
-                        </Badge>
+                        <StatusBadge status={req.status} showIcon />
                       </div>
                     </CardHeader>
                     <CardContent className="p-4 pt-1 space-y-1.5 text-xs text-muted-foreground">
@@ -874,6 +939,13 @@ export function RentPage() {
                         <span>{new Date(req.start_time).toLocaleString()} → {new Date(req.end_time).toLocaleString()}</span>
                       </div>
                       <p className="font-semibold text-foreground">Estimated Amount: ₹{req.total_price}</p>
+                      {(req.status === "accepted" || req.status === "active") && (
+                        <ContactHandoffCard
+                          service="rental"
+                          requestId={req.id}
+                          fallbackName={req.vehicle?.owner?.full_name}
+                        />
+                      )}
                     </CardContent>
                     <CardFooter className="p-4 pt-2 border-t border-border/60 flex items-center justify-end gap-2 flex-wrap">
                       {req.status === "pending" && (
@@ -895,14 +967,15 @@ export function RentPage() {
                               setUpiPaymentData({
                                 amount: req.total_price || 0,
                                 txId: req.id,
-                                payeeName: "Student Owner",
+                                payeeName: req.vehicle?.owner?.full_name || "Vehicle Owner",
+                                payeeUpi: req.vehicle?.owner?.upi_id || null,
                               })
                               setShowUPI(true)
                             }}
                             className="text-xs h-8 gap-1.5 cursor-pointer text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
                           >
                             <QrCode className="size-3.5" />
-                            <span>Settle via UPI</span>
+                            <span>Pay via UPI</span>
                           </Button>
                           <Button
                             size="sm"
@@ -1287,7 +1360,10 @@ export function RentPage() {
           requestId={cancelModalState.requestId}
           title={cancelModalState.title}
           onSuccess={async () => {
+            const cancelledId = cancelModalState.requestId
             setCancelModalState({ isOpen: false, requestId: "", title: "" })
+            setMySentRequests((prev) => prev.filter((req) => req.id !== cancelledId))
+            setIncomingRequests((prev) => prev.filter((req) => req.id !== cancelledId))
             await fetchUserRentals()
             await fetchVehicles()
           }}
@@ -1313,7 +1389,7 @@ export function RentPage() {
       <UPIPaymentModal
         isOpen={showUPI}
         onClose={() => setShowUPI(false)}
-        payeeUpi="test@upi"
+        payeeUpi={upiPaymentData.payeeUpi || null}
         payeeName={upiPaymentData.payeeName || "Student Peer"}
         amount={upiPaymentData.amount}
         txId={upiPaymentData.txId}

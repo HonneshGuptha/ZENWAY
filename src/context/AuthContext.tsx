@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
         .select(
-          "id, full_name, university_name, avatar_url, bio, role, verification_status, registration_status, registration_rejection_reason, registration_reviewed_at, registration_reviewed_by, created_at, updated_at"
+          "id, full_name, university_name, avatar_url, bio, role, verification_status, registration_status, registration_rejection_reason, registration_reviewed_at, registration_reviewed_by, upi_id, created_at, updated_at"
         )
         .eq("id", userId)
         .maybeSingle()
@@ -265,7 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: prof, error: profErr } = await supabase
         .from("profiles")
         .select(
-          "id, full_name, university_name, avatar_url, bio, role, verification_status, registration_status, registration_rejection_reason, registration_reviewed_at, registration_reviewed_by, created_at, updated_at"
+          "id, full_name, university_name, avatar_url, bio, role, verification_status, registration_status, registration_rejection_reason, registration_reviewed_at, registration_reviewed_by, upi_id, created_at, updated_at"
         )
         .eq("id", data.user.id)
         .maybeSingle()
