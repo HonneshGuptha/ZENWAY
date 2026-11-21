@@ -1,15 +1,13 @@
 import * as React from "react"
+import { motion } from "motion/react"
 import {
   ShieldCheck,
   CheckCircle2,
-  Clock,
   User,
   LogOut,
-  ShieldAlert,
-  FileCheck2,
   UserCheck,
+  ArrowRight,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -22,7 +20,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "./ThemeToggle"
 import { ZenwayLogo } from "@/components/brand/ZenwayLogo"
-import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "@/context/RouterContext"
 
@@ -33,19 +30,29 @@ interface HeaderProps {
   onTabChange: (tab: NavTab) => void
 }
 
-const navItems: { id: NavTab; label: string; badge?: string }[] = [
-  { id: "home", label: "Home" },
-  { id: "rent", label: "RENT", badge: "Vehicles" },
-  { id: "ride", label: "RIDE", badge: "Carpool" },
-  { id: "carry", label: "CARRY", badge: "Peer Drop" },
-  { id: "activity", label: "My Activity" },
+/**
+ * Logged-out navigation tabs
+ */
+const loggedOutNavItems: { id: string; label: string; tab?: NavTab; anchor?: string }[] = [
+  { id: "rent", label: "RENT", tab: "rent" },
+  { id: "ride", label: "RIDE", tab: "ride" },
+  { id: "carry", label: "CARRY", tab: "carry" },
+  { id: "safety", label: "SAFETY", anchor: "trust-safety" },
 ]
 
 export function Header({ currentTab, onTabChange }: HeaderProps) {
-  const { user, profile, latestVerification, signOut, isVerified, isPending, isUnverified, isSuspended, isAdmin } = useAuth()
+  const {
+    user,
+    profile,
+    signOut,
+    isVerified,
+    isPending,
+    isSuspended,
+    isAdmin,
+  } = useAuth()
   const { navigate } = useRouter()
 
-  // Compute student initials from profile or email
+  // Compute clean student initials (e.g. "HO", "PK")
   const userInitials = React.useMemo(() => {
     if (profile?.full_name) {
       const parts = profile.full_name.trim().split(/\s+/)
@@ -69,273 +76,208 @@ export function Header({ currentTab, onTabChange }: HeaderProps) {
     }
   }
 
-  return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/85 backdrop-blur-md transition-colors">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand Area: Official Concept 4 Logo */}
-        <div className="flex items-center gap-6">
-          <button
-            type="button"
-            onClick={() => onTabChange("home")}
-            className="group flex cursor-pointer items-center rounded-lg py-1 pr-2 outline-none focus-visible:ring-2 focus-visible:ring-ring text-left"
-            aria-label="ZENWAY Campus Mobility Home"
-          >
-            <ZenwayLogo
-              size="md"
-              withBadge={true}
-              className="transition-transform duration-200 group-hover:scale-[1.02]"
-            />
-          </button>
+  const handleLoggedOutNav = (item: typeof loggedOutNavItems[number]) => {
+    if (item.tab) {
+      onTabChange(item.tab)
+    } else if (item.anchor) {
+      if (currentTab !== "home") {
+        onTabChange("home")
+        setTimeout(() => {
+          const el = document.getElementById(item.anchor!)
+          if (el) el.scrollIntoView({ behavior: "smooth" })
+        }, 120)
+      } else {
+        const el = document.getElementById(item.anchor)
+        if (el) el.scrollIntoView({ behavior: "smooth" })
+      }
+    }
+  }
 
-          {/* Desktop Navigation Links */}
+  return (
+    <header className="sticky top-0 z-40 w-full transition-colors">
+      <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* GROUP 1 (LEFT): Pure brand logo only — zero badge, zero clutter */}
+        <button
+          type="button"
+          onClick={() => onTabChange("home")}
+          className="group flex cursor-pointer items-center rounded-lg py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring text-left"
+          aria-label="ZENWAY Campus Mobility Home"
+        >
+          <ZenwayLogo
+            size="md"
+            withBadge={false}
+            className="transition-transform duration-200 group-hover:scale-[1.02]"
+          />
+        </button>
+
+        {/* GROUP 2 (RIGHT): Post-Login Minimalist Avatar OR Logged-Out Floating Pill Nav */}
+        {user ? (
+          /* Logged-In Top Bar: Pure Minimal Avatar with Verified Badge & Dropdown (Nav links live in BottomDock) */
+          <div className="flex items-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button
+                    type="button"
+                    className="relative size-9 rounded-full ring-1 ring-border/80 hover:ring-primary/40 transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center justify-center bg-card shadow-xs shrink-0"
+                    aria-label="Student profile and account menu"
+                  >
+                    <Avatar className="size-8.5">
+                      <AvatarFallback className="bg-primary/10 text-primary font-bold text-[11px]">
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    {/* Tiny 14px sage/emerald verified checkmark badge anchored at bottom-right */}
+                    {isVerified && (
+                      <span
+                        className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center p-0.5 border border-background shadow-xs"
+                        title="Verified Student ID"
+                      >
+                        <ShieldCheck className="size-2.5 stroke-[2.5]" />
+                      </span>
+                    )}
+                  </button>
+                }
+              />
+              <DropdownMenuContent align="end" sideOffset={8} className="w-64">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="font-normal px-2 py-1.5">
+                    <div className="flex flex-col space-y-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold leading-none text-foreground truncate max-w-[150px]">
+                          {profile?.full_name || "Campus Student"}
+                        </p>
+                        <span
+                          className={`rounded-full px-1.5 py-0.2 text-[9px] font-semibold capitalize ${
+                            isVerified
+                              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                              : isPending
+                              ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                              : isSuspended
+                              ? "bg-destructive/15 text-destructive"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {profile?.verification_status || "Unverified"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate font-mono">
+                        {user.email}
+                      </p>
+                      {profile?.university_name && (
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {profile.university_name}
+                        </p>
+                      )}
+                    </div>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  {isAdmin && (
+                    <DropdownMenuItem
+                      onClick={() => navigate("/admin/registrations")}
+                      className="gap-2 cursor-pointer text-primary font-medium"
+                    >
+                      <UserCheck className="size-4" />
+                      <span>Admin Approval Queue</span>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem
+                    onClick={() => onTabChange("profile")}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <User className="size-4 text-muted-foreground" />
+                    <span>Student Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate("/verification-status")}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <ShieldCheck className="size-4 text-muted-foreground" />
+                    <span>Verification Standing</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onTabChange("activity")}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <CheckCircle2 className="size-4 text-muted-foreground" />
+                    <span>My Active Activity</span>
+                  </DropdownMenuItem>
+                  <div className="px-2 py-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Appearance</span>
+                    <ThemeToggle />
+                  </div>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="gap-2 cursor-pointer text-destructive"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="size-4" />
+                  <span>Sign Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ) : (
+          /* Logged-Out Top Bar: Integrated Biosciences Floating Pill Bar */
           <nav
-            className="hidden md:flex items-center gap-1 ml-2"
+            className="flex items-center gap-1.5 rounded-full border border-border/80 bg-[var(--bg-surface)]/90 backdrop-blur-md px-2 py-1.5 shadow-xs"
             aria-label="Main Navigation"
           >
-            {navItems.map((item) => {
-              const isActive = currentTab === item.id
+            {loggedOutNavItems.map((item) => {
+              const isActive = item.tab && currentTab === item.tab
               return (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => onTabChange(item.id)}
+                  onClick={() => handleLoggedOutNav(item)}
                   aria-current={isActive ? "page" : undefined}
-                  className={`group relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  className={`rounded-full px-3.5 py-1.5 text-[11px] font-semibold tracking-[0.12em] uppercase transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     isActive
-                      ? "text-primary bg-primary/10 font-semibold shadow-xs"
-                      : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                      ? "bg-background text-primary shadow-xs font-bold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   }`}
                 >
                   <span>{item.label}</span>
-                  {item.badge && (
-                    <span
-                      className={`text-[9px] uppercase tracking-wider px-1 py-0.2 rounded font-semibold transition-opacity ${
-                        isActive
-                          ? "bg-primary text-primary-foreground opacity-90"
-                          : "bg-muted text-muted-foreground opacity-60 group-hover:opacity-100"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                  {isActive && (
-                    <span className="absolute -bottom-2.5 inset-x-3 h-0.5 bg-primary rounded-full transition-all" />
-                  )}
                 </button>
               )
             })}
+
+            <div className="h-4 w-[1px] bg-border/70 mx-0.5" aria-hidden="true" />
+
+            {/* Guest Theme Toggle */}
+            <div className="flex items-center px-1">
+              <ThemeToggle />
+            </div>
+
+            <div className="h-4 w-[1px] bg-border/70 mx-0.5" aria-hidden="true" />
+
+            {/* Explicit Guest Login Option */}
+            <button
+              type="button"
+              onClick={() => navigate("/login")}
+              className="rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] uppercase text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              LOGIN
+            </button>
+
+            {/* Single Solid High-Contrast CTA */}
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate("/register")}
+              className="h-8 px-4 rounded-full bg-primary hover:bg-primary/95 text-primary-foreground text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-all shadow-xs flex items-center gap-1 shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span>GET STARTED</span>
+              <ArrowRight className="size-3" />
+            </motion.button>
           </nav>
-        </div>
-
-        {/* Right Action Cluster */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {user ? (
-            <>
-              {/* Admin Registration Approvals Quick Pill */}
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => navigate("/admin/registrations")}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label="Admin registration approval queue"
-                >
-                  <UserCheck className="size-3.5" />
-                  <span className="hidden sm:inline">Admin Approvals</span>
-                  <span className="inline sm:hidden">Admin</span>
-                </button>
-              )}
-
-              {/* Student Verification Indicator */}
-              {isVerified && (
-                <button
-                  type="button"
-                  onClick={() => navigate("/verification-status")}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 transition-colors hover:bg-emerald-500/20 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label="Student verification status: Verified"
-                >
-                  <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span className="hidden sm:inline">Verified Student</span>
-                  <span className="inline sm:hidden">Verified</span>
-                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                </button>
-              )}
-
-              {isPending && (
-                <button
-                  type="button"
-                  onClick={() => navigate("/verification-status")}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300 transition-colors hover:bg-amber-500/20 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label="Student verification status: Pending review"
-                >
-                  <Clock className="size-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
-                  <span className="hidden sm:inline">Review Pending</span>
-                  <span className="inline sm:hidden">Pending</span>
-                </button>
-              )}
-
-              {isUnverified && (
-                <button
-                  type="button"
-                  onClick={() => navigate(latestVerification?.status === "rejected" ? "/verification-status" : "/verify-student")}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label="Student verification status: Unverified"
-                >
-                  <FileCheck2 className="size-3.5" />
-                  <span className="hidden sm:inline">Verify Student ID</span>
-                  <span className="inline sm:hidden">Verify</span>
-                </button>
-              )}
-
-              {isSuspended && (
-                <button
-                  type="button"
-                  onClick={() => navigate("/verification-status")}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label="Student verification status: Suspended"
-                >
-                  <ShieldAlert className="size-3.5" />
-                  <span className="hidden sm:inline">Suspended</span>
-                </button>
-              )}
-
-              {/* Notifications Dropdown */}
-              <NotificationsDropdown />
-
-              {/* Theme Toggle */}
-              <ThemeToggle />
-
-              {/* Profile Avatar with Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <button
-                      type="button"
-                      className="rounded-full ring-2 ring-primary/20 hover:ring-primary/50 transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
-                      aria-label="Student account menu"
-                    >
-                      <Avatar className="size-9 border border-border">
-                        <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
-                          {userInitials}
-                        </AvatarFallback>
-                      </Avatar>
-                    </button>
-                  }
-                />
-                <DropdownMenuContent align="end" sideOffset={6} className="w-64">
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel className="font-normal px-2 py-1.5">
-                      <div className="flex flex-col space-y-1">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold leading-none text-foreground truncate max-w-[150px]">
-                            {profile?.full_name || "Campus Student"}
-                          </p>
-                          <span
-                            className={`rounded-full px-1.5 py-0.2 text-[9px] font-semibold capitalize ${
-                              isVerified
-                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                : isPending
-                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                                : isSuspended
-                                ? "bg-destructive/10 text-destructive"
-                                : "bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            {profile?.verification_status || "Unverified"}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate font-mono">
-                          {user.email}
-                        </p>
-                        {profile?.university_name && (
-                          <p className="text-[10px] text-muted-foreground truncate">
-                            {profile.university_name}
-                          </p>
-                        )}
-                      </div>
-                    </DropdownMenuLabel>
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    {isAdmin && (
-                      <DropdownMenuItem
-                        onClick={() => navigate("/admin/registrations")}
-                        className="gap-2 cursor-pointer text-primary font-medium"
-                      >
-                        <UserCheck className="size-4" />
-                        <span>Admin Approval Queue</span>
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem
-                      onClick={() => onTabChange("profile")}
-                      className="gap-2 cursor-pointer"
-                    >
-                      <User className="size-4 text-muted-foreground" />
-                      <span>Student Profile</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => navigate("/verification-status")}
-                      className="gap-2 cursor-pointer"
-                    >
-                      <ShieldCheck className="size-4 text-muted-foreground" />
-                      <span>Verification Standing</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => onTabChange("activity")}
-                      className="gap-2 cursor-pointer"
-                    >
-                      <CheckCircle2 className="size-4 text-muted-foreground" />
-                      <span>My Active Activity</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    className="gap-2 cursor-pointer text-destructive"
-                    onClick={handleSignOut}
-                  >
-                    <LogOut className="size-4" />
-                    <span>Sign Out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Direct Quick Sign Out Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSignOut}
-                className="h-8.5 px-2.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive gap-1.5 cursor-pointer shadow-2xs font-medium"
-                aria-label="Sign out of account"
-                title="Sign Out"
-              >
-                <LogOut className="size-3.5" />
-                <span className="inline">Sign Out</span>
-              </Button>
-            </>
-          ) : (
-            <>
-              {/* Logged Out Controls */}
-              <ThemeToggle />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/login")}
-                className="text-xs font-semibold cursor-pointer h-9 px-3 hover:bg-muted/70 text-foreground"
-              >
-                Log In
-              </Button>
-
-              <Button
-                size="sm"
-                onClick={() => navigate("/register")}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold cursor-pointer h-9 px-3.5 shadow-xs"
-              >
-                Get Started
-              </Button>
-            </>
-          )}
-        </div>
+        )}
       </div>
     </header>
   )

@@ -226,7 +226,7 @@ export function ActivityPage() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="max-w-5xl mx-auto space-y-6 pt-2 pb-16 px-4 sm:px-6"
+      className="max-w-4xl mx-auto space-y-6 pt-2 pb-16 px-4 sm:px-6"
     >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
@@ -388,7 +388,7 @@ export function ActivityPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => navigate(`/${item.service}`)}
-                      className="text-xs h-8 gap-1 text-muted-foreground hover:text-foreground cursor-pointer"
+                      className="text-xs h-9 min-h-[38px] px-3 gap-1 text-muted-foreground hover:text-foreground cursor-pointer"
                     >
                       <span>View</span>
                       <ArrowRight className="size-3" />

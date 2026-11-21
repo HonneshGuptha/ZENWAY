@@ -3,6 +3,12 @@ import { AnimatePresence, motion } from "motion/react"
 import { AppShell } from "@/components/layout/AppShell"
 import { RouteGuard } from "@/components/auth/RouteGuard"
 import { HomeLanding } from "@/components/home/HomeLanding"
+import { AuthenticatedHome } from "@/components/home/AuthenticatedHome"
+import { ZenwayLogo } from "@/components/brand/ZenwayLogo"
+import { ThemeToggle } from "@/components/layout/ThemeToggle"
+import { MascotLoader } from "@/components/ui/MascotLoader"
+import { EntryIntro } from "@/components/ui/EntryIntro"
+import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "@/context/RouterContext"
 import { pageTransitionVariants } from "@/lib/motion"
 
@@ -39,19 +45,47 @@ const AdminReportsPage = React.lazy(() => import("@/pages/admin/AdminReportsPage
 
 function PageLoadingFallback() {
   return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-3">
-      <div className="size-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-      <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase">
-        Loading...
-      </span>
+    <div className="min-h-[50vh] flex flex-col items-center justify-center">
+      <MascotLoader fullscreen={false} />
     </div>
   )
 }
 
 function App() {
+  const { user, isLoading } = useAuth()
   const { currentPath, currentTab, onTabChange } = useRouter()
+  const [minLoadingElapsed, setMinLoadingElapsed] = React.useState(false)
+  const [showIntro, setShowIntro] = React.useState(() => {
+    try {
+      return sessionStorage.getItem("zenway_intro_seen") !== "true"
+    } catch {
+      return false
+    }
+  })
+
+  // 1. Session-gated intro animation plays FIRST on site entry (never show MascotLoader before EntryIntro)
+  if (showIntro) {
+    return <EntryIntro onComplete={() => setShowIntro(false)} />
+  }
+
+  // 2. In-app auth hydration and loading with minimum smooth duration (2200ms) to prevent page flashes
+  if (isLoading || !minLoadingElapsed) {
+    return (
+      <MascotLoader
+        message="Restoring Campus Session..."
+        fullscreen={true}
+        minDuration={2200}
+        onMinDurationElapsed={() => setMinLoadingElapsed(true)}
+      />
+    )
+  }
 
   const isAdminPath = currentPath.startsWith("/admin")
+  const isAuthPath =
+    currentPath === "/login" ||
+    currentPath === "/register" ||
+    currentPath === "/forgot-password" ||
+    currentPath === "/auth/callback"
 
   // Render dedicated Admin portal routes outside the student AppShell
   if (isAdminPath) {
@@ -112,6 +146,61 @@ function App() {
     )
   }
 
+  // Render dedicated Full-Screen Authentication routes outside the student AppShell
+  if (isAuthPath) {
+    return (
+      <RouteGuard>
+        <div className="min-h-screen bg-background text-foreground flex flex-col font-sans transition-colors duration-200">
+          <header className="w-full border-b border-border/60 bg-background/85 backdrop-blur-md sticky top-0 z-40">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => onTabChange("home")}
+                className="group flex cursor-pointer items-center rounded-lg py-1 pr-2 outline-none focus-visible:ring-2 focus-visible:ring-ring text-left"
+                aria-label="ZENWAY Campus Mobility Home"
+              >
+                <ZenwayLogo size="md" withBadge={true} className="transition-transform duration-200 group-hover:scale-[1.02]" />
+              </button>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+            <React.Suspense fallback={<PageLoadingFallback />}>
+              <AnimatePresence mode="wait">
+                {currentPath === "/login" && (
+                  <motion.div key="login" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <LoginPage />
+                  </motion.div>
+                )}
+
+                {currentPath === "/register" && (
+                  <motion.div key="register" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <RegisterPage />
+                  </motion.div>
+                )}
+
+                {currentPath === "/forgot-password" && (
+                  <motion.div key="forgot-password" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <ForgotPasswordPage />
+                  </motion.div>
+                )}
+
+                {currentPath === "/auth/callback" && (
+                  <motion.div key="auth-callback" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <AuthCallbackPage />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </React.Suspense>
+          </main>
+        </div>
+      </RouteGuard>
+    )
+  }
+
   // Student Application Routes with AppShell
   return (
     <RouteGuard>
@@ -119,32 +208,7 @@ function App() {
         <div className="w-full">
           <React.Suspense fallback={<PageLoadingFallback />}>
             <AnimatePresence mode="wait">
-              {/* 1. AUTHENTICATION ROUTES */}
-              {currentPath === "/login" && (
-                <motion.div key="login" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <LoginPage />
-                </motion.div>
-              )}
-
-              {currentPath === "/register" && (
-                <motion.div key="register" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <RegisterPage />
-                </motion.div>
-              )}
-
-              {currentPath === "/forgot-password" && (
-                <motion.div key="forgot-password" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <ForgotPasswordPage />
-                </motion.div>
-              )}
-
-              {currentPath === "/auth/callback" && (
-                <motion.div key="auth-callback" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <AuthCallbackPage />
-                </motion.div>
-              )}
-
-              {/* 2. ONBOARDING ROUTES */}
+              {/* 1. ONBOARDING ROUTES */}
               {currentPath === "/verify-student" && (
                 <motion.div key="verify-student" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
                   <VerifyStudentPage />
@@ -164,10 +228,20 @@ function App() {
                 </motion.div>
               )}
 
-              {/* 4. HOME ROUTE */}
+              {/* 4. HOME ROUTE: Authenticated Hub for Students, Marketing Landing for Guests */}
               {currentPath === "/" && currentTab === "home" && (
-                <motion.div key="home" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <HomeLanding onNavigate={onTabChange} />
+                <motion.div
+                  key={user ? "authenticated-home" : "guest-home"}
+                  variants={pageTransitionVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  {user ? (
+                    <AuthenticatedHome onNavigate={onTabChange} />
+                  ) : (
+                    <HomeLanding onNavigate={onTabChange} />
+                  )}
                 </motion.div>
               )}
 

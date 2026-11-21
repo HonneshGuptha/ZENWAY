@@ -1,6 +1,7 @@
 import * as React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "@/context/RouterContext"
+import { MascotLoader } from "@/components/ui/MascotLoader"
 
 interface RouteGuardProps {
   children: React.ReactNode
@@ -62,7 +63,7 @@ export function RouteGuard({ children }: RouteGuardProps) {
       } else if (isPending) {
         navigate("/verification-status", { replace: true })
       } else {
-        navigate("/", { replace: true })
+        navigate("/rent", { replace: true })
       }
       return
     }
@@ -95,16 +96,9 @@ export function RouteGuard({ children }: RouteGuardProps) {
     navigate,
   ])
 
-  // Initial loading state with elegant cinematic pulse
+  // Initial loading state with smooth MascotLoader (No fake delay, unmounts instantly)
   if (isLoading) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
-        <div className="size-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-        <p className="text-xs font-mono tracking-wider text-muted-foreground uppercase">
-          Restoring Campus Session...
-        </p>
-      </div>
-    )
+    return <MascotLoader message="Restoring Campus Session..." fullscreen={true} />
   }
 
   return <>{children}</>

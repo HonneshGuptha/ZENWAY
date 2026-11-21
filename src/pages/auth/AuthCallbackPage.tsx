@@ -145,7 +145,7 @@ export function AuthCallbackPage() {
       >
         <Card className="w-full max-w-md border-border/80 shadow-md bg-card/95">
           <CardHeader className="text-center space-y-2 pt-8 pb-4">
-            <ZenwayLogo size="md" withBadge={true} className="mx-auto" />
+            <ZenwayLogo size="md" withBadge={false} className="mx-auto" />
             <CardTitle className="font-heading text-xl font-bold text-foreground">
               Set New Password
             </CardTitle>

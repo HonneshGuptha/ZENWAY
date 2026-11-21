@@ -56,7 +56,7 @@ export function ForgotPasswordPage() {
             onClick={() => navigate("/")}
             className="inline-block cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-1"
           >
-            <ZenwayLogo size="lg" withBadge={true} />
+            <ZenwayLogo size="lg" withBadge={false} />
           </button>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground pt-1">
             Reset your password
@@ -127,7 +127,7 @@ export function ForgotPasswordPage() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full h-10 font-semibold gap-2 cursor-pointer shadow-xs"
+                  className="w-full h-11 min-h-[44px] font-semibold gap-2 cursor-pointer shadow-xs"
                 >
                   {isSubmitting ? (
                     <>

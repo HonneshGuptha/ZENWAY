@@ -18,6 +18,7 @@ import {
   Star,
   Check,
 } from "lucide-react"
+import { toast } from "sonner"
 
 interface NotificationRecord {
   id: string
@@ -58,12 +59,71 @@ export function NotificationsDropdown() {
   }, [user])
 
   React.useEffect(() => {
+    if (!user) {
+      setNotifications([])
+      setUnreadCount(0)
+      return
+    }
+
+    // 1. Initial fetch
     fetchNotifications()
 
-    // Poll every 30 seconds for live background sync
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
-  }, [fetchNotifications])
+    // 2. Realtime subscription: live updates on INSERT/UPDATE for current user
+    const channel = supabase
+      .channel(`user-notifications-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newNotif = payload.new as NotificationRecord
+          setNotifications((prev) => {
+            if (prev.some((n) => n.id === newNotif.id)) return prev
+            return [newNotif, ...prev]
+          })
+          if (!newNotif.is_read) {
+            setUnreadCount((c) => c + 1)
+            toast.info(newNotif.title, {
+              description: newNotif.message,
+            })
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const updatedNotif = payload.new as NotificationRecord
+          setNotifications((prev) => {
+            const nextList = prev.map((n) => (n.id === updatedNotif.id ? updatedNotif : n))
+            setUnreadCount(nextList.filter((n) => !n.is_read).length)
+            return nextList
+          })
+        }
+      )
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          console.error("[Notifications] Realtime channel error")
+        }
+      })
+
+    // 3. Fallback background sync every 60 seconds
+    const interval = setInterval(fetchNotifications, 60000)
+
+    return () => {
+      clearInterval(interval)
+      supabase.removeChannel(channel)
+    }
+  }, [user, fetchNotifications])
 
   // Mark all read
   const handleMarkAllRead = async () => {

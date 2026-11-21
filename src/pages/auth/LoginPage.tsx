@@ -22,22 +22,31 @@ import {
   Shield,
 } from "lucide-react"
 import { pageTransitionVariants } from "@/lib/motion"
+import { MascotLoader } from "@/components/ui/MascotLoader"
 
 export function LoginPage() {
-  const { signIn } = useAuth()
+  const { user, signIn } = useAuth()
   const { navigate, queryParams } = useRouter()
 
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
   const [showPassword, setShowPassword] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [isLoginTransitioning, setIsLoginTransitioning] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [pendingApprovalMsg, setPendingApprovalMsg] = React.useState<string | null>(null)
   const [rejectedMsg, setRejectedMsg] = React.useState<string | null>(null)
 
-  const redirectTarget = queryParams.get("redirect") || "/"
+  const redirectTarget = queryParams.get("redirect") || "/rent"
   const isConfirmed = queryParams.get("confirmed") === "true"
   const isResetSuccess = queryParams.get("reset") === "success"
+
+  // Automatically redirect already authenticated users
+  React.useEffect(() => {
+    if (user) {
+      navigate(redirectTarget, { replace: true })
+    }
+  }, [user, navigate, redirectTarget])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,6 +62,7 @@ export function LoginPage() {
     try {
       setIsSubmitting(true)
       const data = await signIn(email.trim(), password)
+      setIsLoginTransitioning(true)
       let target = redirectTarget
       if (target === "/") {
         try {
@@ -67,6 +77,8 @@ export function LoginPage() {
           // fallback to default target
         }
       }
+      // Hold smooth transition window (2200ms) to ensure auth session and profile hydrate seamlessly
+      await new Promise((resolve) => setTimeout(resolve, 2200))
       navigate(target)
     } catch (err: any) {
       console.error("[Login] Error:", err)
@@ -97,6 +109,15 @@ export function LoginPage() {
     }
   }
 
+  if (isLoginTransitioning) {
+    return (
+      <MascotLoader
+        message="Setting up your campus commute hub..."
+        fullscreen={true}
+      />
+    )
+  }
+
   return (
     <motion.div
       variants={pageTransitionVariants}
@@ -113,7 +134,7 @@ export function LoginPage() {
             onClick={() => navigate("/")}
             className="inline-block cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-1"
           >
-            <ZenwayLogo size="lg" withBadge={true} />
+            <ZenwayLogo size="lg" withBadge={false} />
           </button>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground pt-1">
             Welcome back
@@ -121,6 +142,23 @@ export function LoginPage() {
           <p className="text-xs text-muted-foreground">
             Sign in to your campus mobility account
           </p>
+        </div>
+
+        {/* Auth Mode Switcher */}
+        <div className="grid grid-cols-2 p-1 rounded-xl bg-muted/60 border border-border/60 text-xs font-semibold">
+          <button
+            type="button"
+            className="py-2.5 rounded-lg bg-card text-foreground shadow-xs text-center cursor-default font-bold"
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/register")}
+            className="py-2.5 rounded-lg text-muted-foreground hover:text-foreground text-center cursor-pointer transition-colors"
+          >
+            Create Account
+          </button>
         </div>
 
         {/* Pending Registration Approval Alert */}
@@ -233,7 +271,7 @@ export function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute right-2.5 top-2.5 p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="absolute right-1 top-1 size-8 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
@@ -245,7 +283,7 @@ export function LoginPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-10 font-semibold gap-2 cursor-pointer shadow-xs"
+                className="w-full h-11 min-h-[44px] font-semibold gap-2 cursor-pointer shadow-xs"
               >
                 {isSubmitting ? (
                   <>

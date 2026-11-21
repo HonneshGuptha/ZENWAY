@@ -26,7 +26,7 @@ import {
 import { pageTransitionVariants } from "@/lib/motion"
 
 export function RegisterPage() {
-  const { signUp } = useAuth()
+  const { user, signUp } = useAuth()
   const { navigate } = useRouter()
 
   const [fullName, setFullName] = React.useState("")
@@ -43,6 +43,13 @@ export function RegisterPage() {
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [isSuccess, setIsSuccess] = React.useState(false)
   const [confirmationEmail, setConfirmationEmail] = React.useState("")
+
+  // Automatically redirect already authenticated users
+  React.useEffect(() => {
+    if (user) {
+      navigate("/rent", { replace: true })
+    }
+  }, [user, navigate])
 
   // Real-time validation checks
   const isPasswordTooShort = password.length > 0 && password.length < 8
@@ -202,7 +209,7 @@ export function RegisterPage() {
             onClick={() => navigate("/")}
             className="inline-block cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-1"
           >
-            <ZenwayLogo size="lg" withBadge={true} />
+            <ZenwayLogo size="lg" withBadge={false} />
           </button>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground pt-1">
             Join the Student Mobility Exchange
@@ -210,6 +217,23 @@ export function RegisterPage() {
           <p className="text-xs text-muted-foreground">
             Register with your personal email to get started
           </p>
+        </div>
+
+        {/* Auth Mode Switcher */}
+        <div className="grid grid-cols-2 p-1 rounded-xl bg-muted/60 border border-border/60 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => navigate("/login")}
+            className="py-2.5 rounded-lg text-muted-foreground hover:text-foreground text-center cursor-pointer transition-colors"
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            className="py-2.5 rounded-lg bg-card text-foreground shadow-xs text-center cursor-default font-bold"
+          >
+            Create Account
+          </button>
         </div>
 
         {errorMessage && (
@@ -289,7 +313,7 @@ export function RegisterPage() {
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
                       aria-label={showPassword ? "Hide password" : "Show password"}
-                      className="absolute right-2.5 top-2.5 p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="absolute right-1 top-1 size-8 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
@@ -320,7 +344,7 @@ export function RegisterPage() {
                       type="button"
                       onClick={() => setShowConfirmPassword((prev) => !prev)}
                       aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
-                      className="absolute right-2.5 top-2.5 p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="absolute right-1 top-1 size-8 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
@@ -382,7 +406,7 @@ export function RegisterPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting || password.length < 8 || password !== confirmPassword}
-                className="w-full h-10 font-semibold gap-2 cursor-pointer shadow-xs"
+                className="w-full h-11 min-h-[44px] font-semibold gap-2 cursor-pointer shadow-xs"
               >
                 {isSubmitting ? (
                   <>

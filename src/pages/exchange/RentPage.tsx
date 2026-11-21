@@ -44,6 +44,7 @@ import { DisputeModal } from "@/components/exchange/DisputeModal"
 import { UPIPaymentModal } from "@/components/UPIPaymentModal"
 import { ContactHandoffCard } from "@/components/ContactHandoffCard"
 import { StatusBadge } from "@/components/ui/StatusBadge"
+import { EmptyState } from "@/components/ui/EmptyState"
 
 type VehicleType = "bicycle" | "e_scooter" | "car" | "motorcycle"
 
@@ -585,7 +586,7 @@ export function RentPage() {
               placeholder="Search by vehicle or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-8 text-xs"
+              className="pl-8.5 h-9 text-xs"
             />
             <Search className="size-3.5 text-muted-foreground absolute left-2.5 top-2.5 pointer-events-none" />
           </div>
@@ -630,41 +631,58 @@ export function RentPage() {
               <span className="text-xs text-muted-foreground font-mono">Loading available vehicles...</span>
             </div>
           ) : filteredVehicles.length === 0 ? (
-            <div className="p-12 text-center border border-dashed border-border rounded-xl space-y-2 bg-muted/10">
-              <KeyRound className="size-10 text-muted-foreground/50 mx-auto" />
-              <h3 className="font-semibold text-sm text-foreground">No vehicles available</h3>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                No verified student vehicles currently match this category. Be the first to list a bike or scooter!
-              </p>
-            </div>
+            <EmptyState
+              variant="vehicles"
+              title="No student vehicles found"
+              description="No active bicycles or scooters match your search or filter. Be the first classmate to list one!"
+              actionLabel={user ? "List Your Vehicle" : undefined}
+              onAction={user ? () => setIsListModalOpen(true) : undefined}
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredVehicles.map((vehicle) => {
                 const isOwner = user?.id === vehicle.owner_id
                 return (
                   <Card key={vehicle.id} className="border-border/80 flex flex-col justify-between overflow-hidden shadow-xs hover:border-primary/40 transition-all">
-                    {/* Vehicle Photo or Type Placeholder */}
-                    <div className="h-44 bg-muted/40 relative flex items-center justify-center overflow-hidden border-b border-border/60">
+                    {/* Vehicle Photo or Compact Styled Category Header */}
+                    <div className="relative overflow-hidden border-b border-border/60">
                       {vehicle.primary_image ? (
-                        <img
-                          src={vehicle.primary_image}
-                          alt={vehicle.title}
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                        />
+                        <div className="h-44 w-full bg-muted/40 relative overflow-hidden">
+                          <img
+                            src={vehicle.primary_image}
+                            alt={vehicle.title}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                          />
+                        </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center text-muted-foreground space-y-1">
-                          {vehicle.type === "bicycle" ? (
-                            <Bike className="size-10 stroke-1" />
-                          ) : vehicle.type === "e_scooter" ? (
-                            <Zap className="size-10 stroke-1" />
-                          ) : (
-                            <Car className="size-10 stroke-1" />
-                          )}
-                          <span className="text-[10px] font-mono capitalize">{vehicle.type}</span>
+                        /* Sleek Compact Styled Header Block */
+                        <div className="h-28 w-full bg-gradient-to-br from-card via-secondary/50 to-[var(--accent-primary)]/10 relative flex items-center justify-center overflow-hidden">
+                          {/* Subtle Dot-grid Pattern */}
+                          <div
+                            aria-hidden="true"
+                            className="absolute inset-0 opacity-15 pointer-events-none"
+                            style={{
+                              backgroundImage: `radial-gradient(circle at 1px 1px, var(--color-foreground) 1px, transparent 0)`,
+                              backgroundSize: "14px 14px",
+                            }}
+                          />
+
+                          {/* Floating Category Icon Badge */}
+                          <div className="relative z-10 size-11 rounded-2xl bg-background/90 border border-border/80 shadow-xs flex items-center justify-center text-primary">
+                            {vehicle.type === "bicycle" ? (
+                              <Bike className="size-5" />
+                            ) : vehicle.type === "e_scooter" ? (
+                              <Zap className="size-5" />
+                            ) : (
+                              <Car className="size-5" />
+                            )}
+                          </div>
                         </div>
                       )}
 
-                      <Badge className="absolute top-2.5 right-2.5 text-[10px] capitalize font-bold shadow-xs">
+                      <Badge className="absolute top-2.5 right-2.5 text-[10px] capitalize font-bold shadow-xs backdrop-blur-xs">
                         {vehicle.type.replace(/_/g, " ")}
                       </Badge>
                     </div>

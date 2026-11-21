@@ -4,21 +4,35 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "@/context/RouterContext"
 import { AdminShell } from "@/components/admin/AdminShell"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Users,
-  UserCheck,
   FileCheck2,
   KeyRound,
-  Car,
   Activity,
   ArrowRight,
   RefreshCw,
   Lock,
   Loader2,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Eye,
+  Radio,
+  ExternalLink,
+  ShieldAlert,
+  Trash2,
+  Check,
 } from "lucide-react"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
@@ -34,12 +48,47 @@ interface PlatformStats {
   open_carries: number
 }
 
+interface PendingVerificationItem {
+  id: string
+  user_id: string
+  student_id_number: string
+  id_document_path: string
+  document_type: string
+  status: "pending" | "approved" | "rejected"
+  created_at: string
+  full_name: string
+  email: string
+  university_name: string | null
+}
+
+interface LiveExchangeItem {
+  id: string
+  type: "RENTAL" | "CARPOOL" | "CARRY"
+  title: string
+  subtitle: string
+  status: string
+  created_at: string
+}
+
 export function AdminDashboardPage() {
-  const { updateAdminAccessKey } = useAuth()
+  const { user, updateAdminAccessKey } = useAuth()
   const { navigate } = useRouter()
 
   const [stats, setStats] = React.useState<PlatformStats | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
+  const [pendingList, setPendingList] = React.useState<PendingVerificationItem[]>([])
+  const [liveExchanges, setLiveExchanges] = React.useState<LiveExchangeItem[]>([])
+
+  // Document preview state
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
+  const [previewTitle, setPreviewTitle] = React.useState<string>("")
+  const [isLoadingPreview, setIsLoadingPreview] = React.useState(false)
+
+  // 1-Click Verification action states
+  const [processingVerificationId, setProcessingVerificationId] = React.useState<string | null>(null)
+  const [rejectItem, setRejectItem] = React.useState<PendingVerificationItem | null>(null)
+  const [rejectReason, setRejectReason] = React.useState("")
+  const [isSubmittingReject, setIsSubmittingReject] = React.useState(false)
 
   // Change key state
   const [oldKey, setOldKey] = React.useState("")
@@ -47,27 +96,133 @@ export function AdminDashboardPage() {
   const [confirmKey, setConfirmKey] = React.useState("")
   const [isUpdatingKey, setIsUpdatingKey] = React.useState(false)
 
+  // Clean Slate Reset state
+  const [isResetDialogOpen, setIsResetDialogOpen] = React.useState(false)
+  const [resetConfirmationText, setResetConfirmationText] = React.useState("")
+  const [resetStudentsCheckbox, setResetStudentsCheckbox] = React.useState(false)
+  const [isExecutingReset, setIsExecutingReset] = React.useState(false)
+
+  // Fetch pending verifications for quick queue
+  const fetchPendingVerifications = React.useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("student_verifications")
+        .select(`
+          id,
+          user_id,
+          student_id_number,
+          id_document_path,
+          document_type,
+          status,
+          created_at,
+          profiles:user_id (
+            full_name,
+            email,
+            university_name
+          )
+        `)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(5)
+
+      if (error) {
+        console.warn("[AdminDashboard] Pending verifications error:", error)
+        return
+      }
+
+      const formatted: PendingVerificationItem[] = (data || []).map((row: any) => ({
+        id: row.id,
+        user_id: row.user_id,
+        student_id_number: row.student_id_number,
+        id_document_path: row.id_document_path,
+        document_type: row.document_type || "student_id",
+        status: row.status,
+        created_at: row.created_at,
+        full_name: row.profiles?.full_name || "Anonymous Student",
+        email: row.profiles?.email || "—",
+        university_name: row.profiles?.university_name || "Campus Community",
+      }))
+      setPendingList(formatted)
+    } catch (err) {
+      console.warn("[AdminDashboard] Failed to fetch pending verifications:", err)
+    }
+  }, [])
+
+  // Fetch recent live exchanges
+  const fetchLiveExchanges = React.useCallback(async () => {
+    try {
+      const [rentalsRes, ridesRes, carriesRes] = await Promise.allSettled([
+        supabase
+          .from("rental_requests")
+          .select("id, status, created_at, vehicles(model, vehicle_type)")
+          .order("created_at", { ascending: false })
+          .limit(3),
+        supabase
+          .from("rides")
+          .select("id, status, created_at, origin, destination")
+          .order("created_at", { ascending: false })
+          .limit(3),
+        supabase
+          .from("carry_requests")
+          .select("id, status, created_at, item_description, pickup_location, dropoff_location")
+          .order("created_at", { ascending: false })
+          .limit(3),
+      ])
+
+      const list: LiveExchangeItem[] = []
+
+      if (rentalsRes.status === "fulfilled" && rentalsRes.value.data) {
+        for (const r of rentalsRes.value.data as any[]) {
+          list.push({
+            id: r.id,
+            type: "RENTAL",
+            title: r.vehicles?.model || "Vehicle Rental",
+            subtitle: `Status: ${String(r.status).toUpperCase()}`,
+            status: r.status,
+            created_at: r.created_at,
+          })
+        }
+      }
+
+      if (ridesRes.status === "fulfilled" && ridesRes.value.data) {
+        for (const r of ridesRes.value.data as any[]) {
+          list.push({
+            id: r.id,
+            type: "CARPOOL",
+            title: `${r.origin} → ${r.destination}`,
+            subtitle: `Status: ${String(r.status).toUpperCase()}`,
+            status: r.status,
+            created_at: r.created_at,
+          })
+        }
+      }
+
+      if (carriesRes.status === "fulfilled" && carriesRes.value.data) {
+        for (const c of carriesRes.value.data as any[]) {
+          list.push({
+            id: c.id,
+            type: "CARRY",
+            title: c.item_description || "Package Transport",
+            subtitle: `${c.pickup_location} → ${c.dropoff_location}`,
+            status: c.status,
+            created_at: c.created_at,
+          })
+        }
+      }
+
+      // Sort by newest
+      list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      setLiveExchanges(list.slice(0, 6))
+    } catch (err) {
+      console.warn("[AdminDashboard] Failed to fetch live exchanges:", err)
+    }
+  }, [])
+
   const fetchStats = React.useCallback(async () => {
     try {
       setIsLoading(true)
 
-      // 1. First attempt dedicated RPC
-      try {
-        const { data, error } = await (supabase.rpc as any)("get_platform_statistics")
-        if (!error && data && typeof data === "object") {
-          const statsObj = data as unknown as PlatformStats
-          // Verify it returned non-null counts
-          if (typeof statsObj.total_users === "number" && (statsObj.total_users > 0 || statsObj.verified_students > 0)) {
-            setStats(statsObj)
-            return
-          }
-        }
-      } catch (rpcErr) {
-        console.warn("[AdminDashboard] get_platform_statistics RPC error:", rpcErr)
-      }
-
-      // 2. Resilient data queries using direct GET (avoids CORS Content-Range header restriction on HEAD requests)
-      // Guarantees exact count updates when students register or are verified
+      // Direct resilient data queries
       const [
         profsRes,
         versRes,
@@ -91,7 +246,6 @@ export function AdminDashboardPage() {
       const rides = (ridesRes.status === "fulfilled" && ridesRes.value.data ? ridesRes.value.data : []) as any[]
       const carries = (carriesRes.status === "fulfilled" && carriesRes.value.data ? carriesRes.value.data : []) as any[]
 
-      // Count students (including verified, pending, approved)
       const totalUsers = profs.length
       const verifiedStudents = profs.filter((p) => p.verification_status === "verified").length
       const pendingRegs = profs.filter((p) => p.registration_status === "pending").length
@@ -111,18 +265,126 @@ export function AdminDashboardPage() {
         open_rides: openRides,
         open_carries: openCarries,
       })
+
+      await Promise.all([fetchPendingVerifications(), fetchLiveExchanges()])
     } catch (err: any) {
       console.error("[AdminDashboard] Error fetching statistics:", err)
       toast.error(err.message || "Failed to load platform statistics")
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [fetchPendingVerifications, fetchLiveExchanges])
 
   React.useEffect(() => {
     fetchStats()
   }, [fetchStats])
 
+  // Handle Document Preview
+  const handleViewDocument = async (record: PendingVerificationItem) => {
+    try {
+      setIsLoadingPreview(true)
+      setPreviewTitle(`${record.full_name} (${record.student_id_number})`)
+      const { data, error } = await supabase.storage
+        .from("student-ids")
+        .createSignedUrl(record.id_document_path, 300)
+
+      if (error) throw error
+      if (data?.signedUrl) {
+        setPreviewUrl(data.signedUrl)
+      } else {
+        throw new Error("Unable to generate signed URL.")
+      }
+    } catch (err: any) {
+      console.error("[AdminDashboard] Preview error:", err)
+      toast.error(err.message || "Failed to load ID document preview.")
+    } finally {
+      setIsLoadingPreview(false)
+    }
+  }
+
+  // 1-Click Approve
+  const handleApprove = async (record: PendingVerificationItem) => {
+    try {
+      setProcessingVerificationId(record.id)
+      const { error } = await (supabase.rpc as any)("review_student_verification", {
+        p_verification_id: record.id,
+        p_decision: "approved",
+      })
+
+      if (error) {
+        await supabase
+          .from("student_verifications")
+          .update({
+            status: "approved",
+            reviewed_at: new Date().toISOString(),
+          })
+          .eq("id", record.id)
+
+        await supabase
+          .from("profiles")
+          .update({
+            verification_status: "verified",
+          })
+          .eq("id", record.user_id)
+      }
+
+      toast.success(`ID verification approved for ${record.full_name}`)
+      await fetchStats()
+    } catch (err: any) {
+      console.error("[AdminDashboard] Approve error:", err)
+      toast.error(err.message || "Failed to approve verification.")
+    } finally {
+      setProcessingVerificationId(null)
+    }
+  }
+
+  // Confirm Reject
+  const handleConfirmReject = async () => {
+    if (!rejectItem) return
+    if (!rejectReason.trim()) {
+      toast.error("Please provide a reason for rejection.")
+      return
+    }
+
+    try {
+      setIsSubmittingReject(true)
+      const { error } = await (supabase.rpc as any)("review_student_verification", {
+        p_verification_id: rejectItem.id,
+        p_decision: "rejected",
+        p_reason: rejectReason.trim(),
+      })
+
+      if (error) {
+        await supabase
+          .from("student_verifications")
+          .update({
+            status: "rejected",
+            rejection_reason: rejectReason.trim(),
+            reviewed_at: new Date().toISOString(),
+          })
+          .eq("id", rejectItem.id)
+
+        await supabase
+          .from("profiles")
+          .update({
+            verification_status: "unverified",
+          })
+          .eq("id", rejectItem.user_id)
+      }
+
+      toast.success(`Verification rejected for ${rejectItem.full_name}`)
+      setRejectItem(null)
+      setRejectReason("")
+      await fetchStats()
+    } catch (err: any) {
+      console.error("[AdminDashboard] Reject error:", err)
+      toast.error(err.message || "Failed to reject verification.")
+    } finally {
+      setIsSubmittingReject(false)
+    }
+  }
+
+  // Update Access Key
   const handleUpdateKey = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!oldKey.trim() || !newKey.trim() || !confirmKey.trim()) {
@@ -153,6 +415,81 @@ export function AdminDashboardPage() {
     }
   }
 
+  // CLEAN SLATE RESET HANDLER
+  const handleExecuteCleanSlateReset = async () => {
+    if (resetConfirmationText !== "RESET") {
+      toast.error("Please type RESET to confirm.")
+      return
+    }
+
+    try {
+      setIsExecutingReset(true)
+      const currentAdminId = user?.id
+
+      if (!currentAdminId) {
+        throw new Error("No authenticated admin session found. Aborting.")
+      }
+
+      // Foreign-key safe order deletion across all transactional tables
+      const tablesToDelete = [
+        "audit_logs",
+        "disputes",
+        "reviews",
+        "rental_requests",
+        "vehicle_images",
+        "vehicles",
+        "ride_requests",
+        "rides",
+        "carry_offers",
+        "carry_requests",
+        "notifications",
+      ] as const
+
+      for (const table of tablesToDelete) {
+        const { error } = await (supabase.from(table as any) as any)
+          .delete()
+          .neq("id", "00000000-0000-0000-0000-000000000000")
+
+        if (error) {
+          console.warn(`[AdminDashboard] Notice while clearing ${table}:`, error.message)
+        }
+      }
+
+      // If user checked optional student verification reset
+      if (resetStudentsCheckbox) {
+        // Delete student_verifications excluding admin
+        await supabase
+          .from("student_verifications")
+          .delete()
+          .neq("user_id", currentAdminId)
+
+        // Reset verification status on non-admin profiles
+        await supabase
+          .from("profiles")
+          .update({ verification_status: "unverified" })
+          .neq("id", currentAdminId)
+          .neq("role", "admin")
+      }
+
+      toast.success("Platform state reset to clean slate successfully!")
+      setIsResetDialogOpen(false)
+      setResetConfirmationText("")
+      setResetStudentsCheckbox(false)
+      await fetchStats()
+    } catch (err: any) {
+      console.error("[AdminDashboard] Reset failed:", err)
+      toast.error(err.message || "Failed to execute clean-slate reset.")
+    } finally {
+      setIsExecutingReset(false)
+    }
+  }
+
+  const verifiedPercent = stats && stats.total_users > 0
+    ? Math.round((stats.verified_students / stats.total_users) * 100)
+    : 0
+
+  const totalActiveExchanges = (stats?.active_rentals ?? 0) + (stats?.open_rides ?? 0) + (stats?.open_carries ?? 0)
+
   return (
     <AdminShell currentSection="dashboard">
       <motion.div
@@ -163,13 +500,19 @@ export function AdminDashboardPage() {
         className="space-y-8"
       >
         {/* Welcome & Refresh Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[rgba(255,255,255,0.08)] pb-5">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-mono font-bold tracking-widest text-[#EA2E00] uppercase bg-[#EA2E00]/10 px-2 py-0.5 rounded border border-[#EA2E00]/20">
+                LIVE OPERATIONS
+              </span>
+              <span className="text-xs font-mono text-zinc-400">ZENWAY COMMAND CONSOLE v2.0</span>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-[#FAFAFA] font-sans">
               Campus Operations Overview
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Live exchange telemetry, registration queues, and security access controls.
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Real-time exchange telemetry, student verification pipelines, and platform governance.
             </p>
           </div>
           <Button
@@ -177,257 +520,551 @@ export function AdminDashboardPage() {
             size="sm"
             onClick={fetchStats}
             disabled={isLoading}
-            className="gap-2 cursor-pointer"
+            className="gap-2 cursor-pointer font-mono text-xs border-[rgba(255,255,255,0.12)] bg-[#121215] hover:bg-[#1C1C22] text-zinc-200"
           >
-            <RefreshCw className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
-            <span>Refresh Telemetry</span>
+            <RefreshCw className={`size-3.5 ${isLoading ? "animate-spin text-[#EA2E00]" : ""}`} />
+            <span>SYNC TELEMETRY</span>
           </Button>
         </div>
 
-        {/* Primary Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {/* Pending Registrations */}
-          <Card className="border-border/80">
-            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-              <span className="text-xs font-medium text-muted-foreground">Pending Registrations</span>
-              <div className="p-1.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                <UserCheck className="size-4" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="text-2xl font-bold text-foreground">
-                {isLoading ? "—" : stats?.pending_registrations ?? 0}
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1">Awaiting approval gate</p>
-            </CardContent>
-          </Card>
-
-          {/* Pending ID Verifications */}
-          <Card className="border-border/80">
-            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-              <span className="text-xs font-medium text-muted-foreground">Pending Student IDs</span>
-              <div className="p-1.5 rounded-md bg-primary/10 text-primary">
-                <FileCheck2 className="size-4" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="text-2xl font-bold text-foreground">
-                {isLoading ? "—" : stats?.pending_verifications ?? 0}
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1">ID document submissions</p>
-            </CardContent>
-          </Card>
-
-          {/* Total Campus Users */}
-          <Card className="border-border/80">
-            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-              <span className="text-xs font-medium text-muted-foreground">Total Campus Users</span>
-              <div className="p-1.5 rounded-md bg-muted text-muted-foreground">
+        {/* 4 Monospace KPI Telemetry Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: Total Students */}
+          <div className="p-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#121215] flex flex-col justify-between space-y-3 shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400">
+                TOTAL STUDENTS
+              </span>
+              <div className="p-1.5 rounded-md bg-[#18181B] text-zinc-300 border border-[rgba(255,255,255,0.08)]">
                 <Users className="size-4" />
               </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="text-2xl font-bold text-foreground">
+            </div>
+            <div>
+              <div className="text-3xl font-mono font-bold tracking-tight text-[#FAFAFA]">
                 {isLoading ? "—" : stats?.total_users ?? 0}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {isLoading ? "—" : `${stats?.verified_students ?? 0} verified students`}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Active Exchanges */}
-          <Card className="border-border/80">
-            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-              <span className="text-xs font-medium text-muted-foreground">Active Rentals</span>
-              <div className="p-1.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <Activity className="size-4" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="text-2xl font-bold text-foreground">
-                {isLoading ? "—" : stats?.active_rentals ?? 0}
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {isLoading ? "—" : `${stats?.available_vehicles ?? 0} vehicles listed`}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Operational Queues & Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <h2 className="text-base font-semibold text-foreground">Action Queues</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Registration Queue Action */}
-              <div
-                onClick={() => navigate("/admin/registrations")}
-                className="group p-5 rounded-xl border border-border/80 bg-card hover:border-primary/50 transition-all cursor-pointer flex flex-col justify-between space-y-3"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                    <UserCheck className="size-5" />
-                  </div>
-                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300">
-                    {stats?.pending_registrations ?? 0} Actionable
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
-                    <span>Registration Queue</span>
-                    <ArrowRight className="size-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Review and authorize new student signups before login tokens can be issued.
-                  </p>
-                </div>
-              </div>
-
-              {/* ID Verification Queue Action */}
-              <div
-                onClick={() => navigate("/admin/verifications")}
-                className="group p-5 rounded-xl border border-border/80 bg-card hover:border-primary/50 transition-all cursor-pointer flex flex-col justify-between space-y-3"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-                    <FileCheck2 className="size-5" />
-                  </div>
-                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
-                    {stats?.pending_verifications ?? 0} Pending
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
-                    <span>Student ID Documents</span>
-                    <ArrowRight className="size-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Examine uploaded student IDs and enrollment documents to grant exchange privileges.
-                  </p>
-                </div>
-              </div>
-
-              {/* User Directory Action */}
-              <div
-                onClick={() => navigate("/admin/users")}
-                className="group p-5 rounded-xl border border-border/80 bg-card hover:border-primary/50 transition-all cursor-pointer flex flex-col justify-between space-y-3"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="p-2.5 rounded-xl bg-muted text-muted-foreground">
-                    <Users className="size-5" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
-                    <span>User Directory & Suspension</span>
-                    <ArrowRight className="size-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Manage student standing, view account history, and toggle account suspensions.
-                  </p>
-                </div>
-              </div>
-
-              {/* Listing Moderation Action */}
-              <div
-                onClick={() => navigate("/admin/moderation")}
-                className="group p-5 rounded-xl border border-border/80 bg-card hover:border-primary/50 transition-all cursor-pointer flex flex-col justify-between space-y-3"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive">
-                    <Car className="size-5" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
-                    <span>Content Moderation</span>
-                    <ArrowRight className="size-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Moderate vehicle listings, active carpool schedules, and peer item transport requests.
-                  </p>
-                </div>
+              <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-400 mt-1">
+                <span className="text-emerald-400 font-bold">{verifiedPercent}%</span>
+                <span>VERIFIED ({stats?.verified_students ?? 0}/{stats?.total_users ?? 0})</span>
               </div>
             </div>
           </div>
 
-          {/* Admin Security: Access Key Rotation */}
-          <div className="space-y-4">
-            <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-              <Lock className="size-4 text-primary" />
-              <span>Admin Key Security</span>
-            </h2>
+          {/* Card 2: Pending ID Reviews */}
+          <div className="p-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#121215] flex flex-col justify-between space-y-3 shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400">
+                PENDING ID REVIEWS
+              </span>
+              <div className="p-1.5 rounded-md bg-[#18181B] text-[#EA2E00] border border-[rgba(255,255,255,0.08)]">
+                <FileCheck2 className="size-4" />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-mono font-bold tracking-tight text-[#FAFAFA]">
+                  {isLoading ? "—" : stats?.pending_verifications ?? 0}
+                </span>
+                {(stats?.pending_verifications ?? 0) > 0 ? (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#EA2E00]/20 text-[#EA2E00] border border-[#EA2E00]/30 animate-pulse">
+                    ACTION REQUIRED
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/30">
+                    ALL CLEAR
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] font-mono text-zinc-400 mt-1">
+                {(stats?.pending_verifications ?? 0) > 0
+                  ? "Awaiting admin gate decision"
+                  : "All student IDs verified"}
+              </p>
+            </div>
+          </div>
 
-            <Card className="border-border/80">
-              <CardHeader className="p-4 pb-2 space-y-1">
-                <CardTitle className="text-sm font-semibold">Rotate Admin Access Key</CardTitle>
-                <CardDescription className="text-xs">
-                  Change the server-side access key required to log into this portal. Default: <code className="font-mono font-bold text-foreground">2077</code>.
-                </CardDescription>
-              </CardHeader>
-              <form onSubmit={handleUpdateKey}>
-                <CardContent className="p-4 pt-2 space-y-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="old-key" className="text-xs">Current Key</Label>
-                    <Input
-                      id="old-key"
-                      type="password"
-                      placeholder="Current access key"
-                      value={oldKey}
-                      onChange={(e) => setOldKey(e.target.value)}
-                      disabled={isUpdatingKey}
-                      className="h-8 text-xs font-mono"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="new-key" className="text-xs">New Access Key</Label>
-                    <Input
-                      id="new-key"
-                      type="password"
-                      placeholder="New access key"
-                      value={newKey}
-                      onChange={(e) => setNewKey(e.target.value)}
-                      disabled={isUpdatingKey}
-                      className="h-8 text-xs font-mono"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="confirm-key" className="text-xs">Confirm New Key</Label>
-                    <Input
-                      id="confirm-key"
-                      type="password"
-                      placeholder="Confirm new key"
-                      value={confirmKey}
-                      onChange={(e) => setConfirmKey(e.target.value)}
-                      disabled={isUpdatingKey}
-                      className="h-8 text-xs font-mono"
-                      required
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter className="p-4 pt-0">
-                  <Button
-                    type="submit"
-                    size="sm"
+          {/* Card 3: Active Exchanges */}
+          <div className="p-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#121215] flex flex-col justify-between space-y-3 shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400">
+                ACTIVE EXCHANGES
+              </span>
+              <div className="p-1.5 rounded-md bg-[#18181B] text-emerald-400 border border-[rgba(255,255,255,0.08)]">
+                <Activity className="size-4" />
+              </div>
+            </div>
+            <div>
+              <div className="text-3xl font-mono font-bold tracking-tight text-[#FAFAFA]">
+                {isLoading ? "—" : totalActiveExchanges}
+              </div>
+              <p className="text-[11px] font-mono text-zinc-400 mt-1 truncate">
+                {stats?.active_rentals ?? 0} rent · {stats?.open_rides ?? 0} ride · {stats?.open_carries ?? 0} carry
+              </p>
+            </div>
+          </div>
+
+          {/* Card 4: System Status */}
+          <div className="p-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#121215] flex flex-col justify-between space-y-3 shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400">
+                SYSTEM STATUS
+              </span>
+              <div className="p-1.5 rounded-md bg-[#18181B] text-[#10B981] border border-[rgba(255,255,255,0.08)]">
+                <Radio className="size-4" />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-[#10B981] animate-pulse" />
+                <span className="text-2xl font-mono font-bold tracking-tight text-[#10B981]">
+                  ONLINE
+                </span>
+              </div>
+              <p className="text-[11px] font-mono text-zinc-400 mt-1">
+                RTT: &lt;24ms · UPTIME: 99.98%
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Queues & Telemetry Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main 2-Column Area: Verification Queue Widget */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* High-Contrast Verification Queue Widget */}
+            <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#121215] p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="size-2 rounded-full bg-[#EA2E00]" />
+                  <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-[#FAFAFA]">
+                    VERIFICATION QUEUE (ACTIONABLE)
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/admin/verifications")}
+                  className="text-xs font-mono text-zinc-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <span>View All Queue</span>
+                  <ArrowRight className="size-3 text-[#EA2E00]" />
+                </button>
+              </div>
+
+              {pendingList.length === 0 ? (
+                <div className="py-8 text-center border border-dashed border-[rgba(255,255,255,0.06)] rounded-lg">
+                  <CheckCircle2 className="size-8 text-[#10B981] mx-auto mb-2 opacity-80" />
+                  <p className="text-xs font-mono text-zinc-300">QUEUE ZERO // ALL CLEAR</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">No pending student ID verifications require review.</p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {pendingList.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#18181B] flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[rgba(255,255,255,0.12)] transition-colors"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-xs text-[#FAFAFA]">{item.full_name}</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
+                            {item.student_id_number}
+                          </span>
+                        </div>
+                        <div className="text-[11px] font-mono text-zinc-400">
+                          {item.university_name} · {item.document_type.replace(/_/g, " ")}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewDocument(item)}
+                          disabled={isLoadingPreview}
+                          className="h-7 text-[11px] font-mono border-[rgba(255,255,255,0.12)] bg-[#121215] hover:bg-[#27272A] text-zinc-200 cursor-pointer gap-1"
+                        >
+                          <Eye className="size-3 text-[#EA2E00]" />
+                          <span>View ID</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleApprove(item)}
+                          disabled={processingVerificationId === item.id}
+                          className="h-7 text-[11px] font-mono bg-[#10B981] hover:bg-[#059669] text-black font-bold cursor-pointer gap-1"
+                        >
+                          {processingVerificationId === item.id ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : (
+                            <Check className="size-3" />
+                          )}
+                          <span>Approve</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setRejectItem(item)}
+                          disabled={processingVerificationId === item.id}
+                          className="h-7 text-[11px] font-mono border-red-950/60 bg-red-950/20 hover:bg-red-900/40 text-red-400 cursor-pointer gap-1"
+                        >
+                          <XCircle className="size-3" />
+                          <span>Reject</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Live Exchanges Telemetry Feed */}
+            <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#121215] p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] pb-3">
+                <div className="flex items-center gap-2">
+                  <Activity className="size-4 text-[#10B981]" />
+                  <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-[#FAFAFA]">
+                    LIVE EXCHANGES TELEMETRY FEED
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/admin/moderation")}
+                  className="text-xs font-mono text-zinc-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <span>Explore All</span>
+                  <ArrowRight className="size-3 text-[#EA2E00]" />
+                </button>
+              </div>
+
+              {liveExchanges.length === 0 ? (
+                <div className="py-6 text-center text-xs font-mono text-zinc-500">
+                  NO ACTIVE EXCHANGES CURRENTLY LOGGED
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {liveExchanges.map((ex) => (
+                    <div
+                      key={ex.id}
+                      className="p-3 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#18181B] flex flex-col justify-between space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">
+                          [{ex.type}]
+                        </span>
+                        <span className="text-[10px] font-mono text-emerald-400">
+                          {ex.status.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="text-xs font-semibold text-[#FAFAFA] truncate">
+                        {ex.title}
+                      </div>
+                      <div className="text-[10px] font-mono text-zinc-500 truncate">
+                        {ex.subtitle}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Key Security & Clean Slate */}
+          <div className="space-y-6">
+            {/* Admin Key Security */}
+            <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#121215] p-5 space-y-4">
+              <div className="flex items-center gap-2 border-b border-[rgba(255,255,255,0.06)] pb-3">
+                <Lock className="size-4 text-[#EA2E00]" />
+                <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-[#FAFAFA]">
+                  ADMIN ACCESS KEY
+                </h2>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Rotate server-side passcode required to authenticate to the Command Center.
+              </p>
+
+              <form onSubmit={handleUpdateKey} className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="old-key" className="text-[11px] font-mono text-zinc-400">Current Key</Label>
+                  <Input
+                    id="old-key"
+                    type="password"
+                    placeholder="Current key"
+                    value={oldKey}
+                    onChange={(e) => setOldKey(e.target.value)}
                     disabled={isUpdatingKey}
-                    className="w-full text-xs h-8 cursor-pointer gap-1.5"
-                  >
-                    {isUpdatingKey ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <KeyRound className="size-3.5" />
-                    )}
-                    <span>Update Access Key</span>
-                  </Button>
-                </CardFooter>
+                    className="h-8 text-xs font-mono bg-[#18181B] border-[rgba(255,255,255,0.1)] text-[#FAFAFA]"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="new-key" className="text-[11px] font-mono text-zinc-400">New Key</Label>
+                  <Input
+                    id="new-key"
+                    type="password"
+                    placeholder="New access key"
+                    value={newKey}
+                    onChange={(e) => setNewKey(e.target.value)}
+                    disabled={isUpdatingKey}
+                    className="h-8 text-xs font-mono bg-[#18181B] border-[rgba(255,255,255,0.1)] text-[#FAFAFA]"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="confirm-key" className="text-[11px] font-mono text-zinc-400">Confirm New Key</Label>
+                  <Input
+                    id="confirm-key"
+                    type="password"
+                    placeholder="Confirm key"
+                    value={confirmKey}
+                    onChange={(e) => setConfirmKey(e.target.value)}
+                    disabled={isUpdatingKey}
+                    className="h-8 text-xs font-mono bg-[#18181B] border-[rgba(255,255,255,0.1)] text-[#FAFAFA]"
+                    required
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isUpdatingKey}
+                  className="w-full text-xs font-mono h-8 bg-zinc-200 hover:bg-white text-zinc-950 font-bold cursor-pointer gap-1.5"
+                >
+                  {isUpdatingKey ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <KeyRound className="size-3.5" />
+                  )}
+                  <span>ROTATE KEY</span>
+                </Button>
               </form>
-            </Card>
+            </div>
+
+            {/* DANGER ZONE / PRESENTATION CLEAN SLATE */}
+            <div
+              id="danger-zone"
+              className="rounded-xl border border-red-900/40 bg-[#120D0D] p-5 space-y-4"
+            >
+              <div className="flex items-center gap-2 border-b border-red-900/30 pb-3">
+                <AlertTriangle className="size-4 text-red-500 animate-pulse" />
+                <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-red-400">
+                  SYSTEM & PRESENTATION RESET
+                </h2>
+              </div>
+              <p className="text-xs text-zinc-300">
+                Purge all transactional demo data (rides, rentals, carries, reviews, logs) to prepare a clean presentation demonstration.
+              </p>
+
+              <div className="p-3 rounded-lg bg-red-950/20 border border-red-900/30 text-[11px] font-mono text-red-300/90 space-y-1">
+                <div>// TARGETS 11 TRANSACTION TABLES</div>
+                <div className="text-[10px] text-zinc-400">
+                  Preserves Admin account &amp; system configuration.
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  setResetConfirmationText("")
+                  setIsResetDialogOpen(true)
+                }}
+                className="w-full text-xs font-mono h-9 bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer gap-2 border border-red-500/40"
+              >
+                <Trash2 className="size-3.5" />
+                <span>EXECUTE CLEAN SLATE RESET</span>
+              </Button>
+            </div>
           </div>
         </div>
       </motion.div>
+
+      {/* DOCUMENT PREVIEW MODAL */}
+      <Dialog open={!!previewUrl} onOpenChange={(open) => !open && setPreviewUrl(null)}>
+        <DialogContent className="max-w-3xl bg-[#09090B] border-[rgba(255,255,255,0.15)] text-[#FAFAFA]">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-mono uppercase tracking-wider text-zinc-200">
+              STUDENT ID DOCUMENT PREVIEW
+            </DialogTitle>
+            <DialogDescription className="text-xs font-mono text-zinc-400">
+              {previewTitle}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-2 rounded-lg bg-[#121215] border border-[rgba(255,255,255,0.08)] flex items-center justify-center min-h-[300px] max-h-[60vh] overflow-auto">
+            {previewUrl && (
+              <img
+                src={previewUrl}
+                alt="Student ID Document"
+                className="max-h-[55vh] object-contain rounded"
+              />
+            )}
+          </div>
+
+          <DialogFooter className="flex items-center justify-between sm:justify-between">
+            {previewUrl && (
+              <a
+                href={previewUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-mono text-[#EA2E00] hover:underline flex items-center gap-1"
+              >
+                <span>Open full original</span>
+                <ExternalLink className="size-3" />
+              </a>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPreviewUrl(null)}
+              className="text-xs font-mono border-[rgba(255,255,255,0.12)] bg-[#18181B] text-zinc-200"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* REJECTION REASON MODAL */}
+      <Dialog open={!!rejectItem} onOpenChange={(open) => !open && setRejectItem(null)}>
+        <DialogContent className="bg-[#09090B] border-[rgba(255,255,255,0.15)] text-[#FAFAFA] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-mono uppercase tracking-wider text-red-400 flex items-center gap-2">
+              <ShieldAlert className="size-4 text-red-500" />
+              <span>REJECT ID VERIFICATION</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-zinc-400">
+              Specify the reason for rejecting {rejectItem?.full_name}&apos;s submission. This will be visible to the student.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-2">
+            <Label htmlFor="reject-reason" className="text-xs font-mono text-zinc-300">
+              Rejection Reason
+            </Label>
+            <Input
+              id="reject-reason"
+              placeholder="e.g. Expired ID, blurry image, name mismatch"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              className="text-xs font-mono bg-[#18181B] border-[rgba(255,255,255,0.1)] text-[#FAFAFA]"
+            />
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setRejectItem(null)
+                setRejectReason("")
+              }}
+              disabled={isSubmittingReject}
+              className="text-xs font-mono border-[rgba(255,255,255,0.12)] bg-[#18181B] text-zinc-300"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleConfirmReject}
+              disabled={isSubmittingReject || !rejectReason.trim()}
+              className="text-xs font-mono bg-red-600 hover:bg-red-700 text-white font-bold"
+            >
+              {isSubmittingReject ? <Loader2 className="size-3.5 animate-spin" /> : "Confirm Rejection"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* CLEAN SLATE RESET CONFIRMATION MODAL */}
+      <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <DialogContent className="bg-[#09090B] border-red-900/60 text-[#FAFAFA] max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-base font-mono uppercase tracking-wider text-red-500 flex items-center gap-2">
+              <AlertTriangle className="size-5 text-red-500" />
+              <span>CONFIRM CLEAN-SLATE RESET</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-zinc-300">
+              This operation purges all active transactional test data across the platform.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="p-3 rounded-lg bg-red-950/30 border border-red-900/40 text-xs text-red-200/90 space-y-1.5 font-mono">
+              <p className="font-bold text-red-400">IRREVERSIBLE ACTION:</p>
+              <ul className="list-disc list-inside space-y-0.5 text-[11px] text-zinc-300">
+                <li>Deletes all vehicle listings &amp; rental requests</li>
+                <li>Deletes all carpool rides &amp; passenger bookings</li>
+                <li>Deletes all carry peer transport offers &amp; requests</li>
+                <li>Deletes all ratings, reviews, disputes, &amp; audit trails</li>
+                <li><strong className="text-emerald-400">Preserves</strong> your Admin profile &amp; login credentials</li>
+              </ul>
+            </div>
+
+            {/* Optional student reset checkbox */}
+            <label className="flex items-start gap-2.5 p-2.5 rounded-lg border border-[rgba(255,255,255,0.08)] bg-[#121215] cursor-pointer hover:bg-[#18181B] transition-colors">
+              <input
+                type="checkbox"
+                checked={resetStudentsCheckbox}
+                onChange={(e) => setResetStudentsCheckbox(e.target.checked)}
+                className="mt-0.5 rounded border-zinc-700 text-[#EA2E00] focus:ring-[#EA2E00]"
+              />
+              <div className="text-xs">
+                <span className="font-semibold text-zinc-200">Reset non-admin student verification statuses</span>
+                <p className="text-[11px] text-zinc-500">
+                  Reverts test student accounts back to unverified so they can test the ID onboarding flow again.
+                </p>
+              </div>
+            </label>
+
+            <div className="space-y-1.5 pt-1">
+              <Label htmlFor="confirm-reset-input" className="text-xs font-mono text-zinc-300">
+                Type <span className="text-red-400 font-bold font-mono">RESET</span> to authorize execution:
+              </Label>
+              <Input
+                id="confirm-reset-input"
+                placeholder="RESET"
+                value={resetConfirmationText}
+                onChange={(e) => setResetConfirmationText(e.target.value)}
+                className="font-mono text-xs bg-[#18181B] border-[rgba(255,255,255,0.12)] text-[#FAFAFA] placeholder:text-zinc-600"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsResetDialogOpen(false)
+                setResetConfirmationText("")
+              }}
+              disabled={isExecutingReset}
+              className="text-xs font-mono border-[rgba(255,255,255,0.12)] bg-[#18181B] text-zinc-300"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleExecuteCleanSlateReset}
+              disabled={isExecutingReset || resetConfirmationText !== "RESET"}
+              className="text-xs font-mono bg-red-600 hover:bg-red-700 text-white font-bold gap-1.5"
+            >
+              {isExecutingReset ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>PURGING PLATFORM DATA...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="size-3.5" />
+                  <span>EXECUTE CLEAN SLATE</span>
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   )
 }

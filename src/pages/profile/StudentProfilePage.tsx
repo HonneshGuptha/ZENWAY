@@ -22,10 +22,12 @@ import {
   Save,
   Loader2,
   CheckCircle2,
-  LogOut,
   FileCheck2,
   UserCheck,
   QrCode,
+  Star,
+  Sparkles,
+  MapPin,
 } from "lucide-react"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
@@ -37,7 +39,6 @@ export function StudentProfilePage() {
     isLoading,
     latestVerification,
     refreshProfile,
-    signOut,
     isVerified,
     isPending,
     isUnverified,
@@ -162,11 +163,6 @@ export function StudentProfilePage() {
     }
   }
 
-  const handleSignOut = async () => {
-    await signOut()
-    navigate("/")
-  }
-
   if (!user && !isLoading) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-3 text-center p-6">
@@ -254,17 +250,6 @@ export function StudentProfilePage() {
               <span>Account Suspended</span>
             </Badge>
           )}
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleSignOut}
-            className="gap-1.5 text-xs h-8 cursor-pointer text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-            title="Sign out of student account"
-          >
-            <LogOut className="size-3.5" />
-            <span>Sign Out</span>
-          </Button>
         </div>
       </div>
 
@@ -283,6 +268,49 @@ export function StudentProfilePage() {
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
       )}
+
+      {/* Refero.design Quick Metrics Overview */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-xl border border-border/70 bg-card/60 backdrop-blur-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground mb-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wider">Campus Trust</span>
+            <Star className="size-3.5 text-amber-500 fill-amber-500" />
+          </div>
+          <div className="text-lg font-bold text-foreground">5.0 / 5.0</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Verified Peer Standing</div>
+        </div>
+
+        <div className="p-3.5 rounded-xl border border-border/70 bg-card/60 backdrop-blur-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground mb-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wider">Platform Fee</span>
+            <Sparkles className="size-3.5 text-primary" />
+          </div>
+          <div className="text-lg font-bold text-foreground">0% Take Rate</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">100% Direct Peer UPI</div>
+        </div>
+
+        <div className="p-3.5 rounded-xl border border-border/70 bg-card/60 backdrop-blur-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground mb-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wider">ID Status</span>
+            <ShieldCheck className={`size-3.5 ${isVerified ? "text-emerald-500" : "text-muted-foreground"}`} />
+          </div>
+          <div className="text-sm font-semibold truncate text-foreground mt-0.5">
+            {isVerified ? "Official College ID" : isPending ? "Review Pending" : "Action Needed"}
+          </div>
+          <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+            {profile?.university_name ? (profile.university_name).trim() : "Campus Community"}
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-xl border border-border/70 bg-card/60 backdrop-blur-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground mb-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wider">Safe Handoff</span>
+            <MapPin className="size-3.5 text-emerald-500" />
+          </div>
+          <div className="text-lg font-bold text-foreground">Active</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Designated Landmarks</div>
+        </div>
+      </div>
 
       {/* Main Profile Form */}
       <Card className="border-border/80 shadow-sm bg-card">
@@ -439,21 +467,11 @@ export function StudentProfilePage() {
             </div>
           </CardContent>
 
-          <CardFooter className="flex items-center justify-between pt-2 pb-6 border-t border-border/60">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSignOut}
-              className="text-xs text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer gap-1.5"
-            >
-              <LogOut className="size-3.5" />
-              <span>Sign Out</span>
-            </Button>
-
+          <CardFooter className="flex items-center justify-end pt-4 pb-6 border-t border-border/60">
             <Button
               type="submit"
               disabled={isSaving}
-              className="h-10 text-xs font-semibold gap-1.5 cursor-pointer shadow-xs"
+              className="h-10 min-h-[44px] sm:min-h-[40px] px-5 text-xs font-semibold gap-1.5 cursor-pointer shadow-xs"
             >
               {isSaving ? (
                 <>

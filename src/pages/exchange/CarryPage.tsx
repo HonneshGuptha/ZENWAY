@@ -41,6 +41,7 @@ import { CancellationModal } from "@/components/exchange/CancellationModal"
 import { DisputeModal } from "@/components/exchange/DisputeModal"
 import { ContactHandoffCard } from "@/components/ContactHandoffCard"
 import { StatusBadge } from "@/components/ui/StatusBadge"
+import { EmptyState } from "@/components/ui/EmptyState"
 
 type PackageSize = "envelope" | "small_box" | "backpack" | "medium_box"
 
@@ -508,7 +509,7 @@ export function CarryPage() {
               placeholder="Search pickup or item..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-8 text-xs"
+              className="pl-8.5 h-9 text-xs"
             />
             <Search className="size-3.5 text-muted-foreground absolute left-2.5 top-2.5 pointer-events-none" />
           </div>
@@ -551,13 +552,13 @@ export function CarryPage() {
               <span className="text-xs text-muted-foreground font-mono">Loading delivery requests...</span>
             </div>
           ) : filteredRequests.length === 0 ? (
-            <div className="p-12 text-center border border-dashed border-border rounded-xl space-y-2 bg-muted/10">
-              <Package className="size-10 text-muted-foreground/50 mx-auto" />
-              <h3 className="font-semibold text-sm text-foreground">No open delivery requests</h3>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                No peer transport requests currently match this filter. Post a delivery if you need something carried!
-              </p>
-            </div>
+            <EmptyState
+              variant="search"
+              title="No open delivery requests"
+              description="No peer transport requests currently match this filter. Post a delivery if you need something carried across campus!"
+              actionLabel={user ? "Post Delivery Request" : undefined}
+              onAction={user ? () => setIsCreateModalOpen(true) : undefined}
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredRequests.map((req) => {

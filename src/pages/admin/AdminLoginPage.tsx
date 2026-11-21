@@ -66,26 +66,44 @@ export function AdminLoginPage() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="min-h-screen flex flex-col items-center justify-center p-4 bg-muted/40"
+      className="dark min-h-screen flex flex-col items-center justify-center p-4 bg-[#09090B] text-[#FAFAFA]"
+      style={{
+        "--bg-canvas": "#09090B",
+        "--bg-surface": "#121215",
+        "--bg-surface-muted": "#1C1C21",
+        "--text-primary": "#FAFAFA",
+        "--text-muted": "#A1A1AA",
+        "--border-subtle": "rgba(255, 255, 255, 0.12)",
+        "--background": "#09090B",
+        "--foreground": "#FAFAFA",
+        "--card": "#121215",
+        "--card-foreground": "#FAFAFA",
+        "--popover": "#121215",
+        "--popover-foreground": "#FAFAFA",
+        "--muted": "#1C1C21",
+        "--muted-foreground": "#A1A1AA",
+        "--border": "rgba(255, 255, 255, 0.12)",
+        "--input": "rgba(255, 255, 255, 0.15)",
+      } as React.CSSProperties}
     >
       <div className="w-full max-w-md space-y-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <ZenwayLogo size="lg" withBadge={false} />
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-destructive/10 text-destructive text-xs font-semibold tracking-wide">
+          <ZenwayLogo size="lg" withBadge={false} className="text-[#FAFAFA]" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EA2E00]/15 text-[#EA2E00] border border-[#EA2E00]/30 text-xs font-mono font-bold tracking-wide">
             <Shield className="size-3.5" />
             <span>CAMPUS OPERATIONS PORTAL</span>
           </div>
-          <p className="text-xs text-muted-foreground max-w-xs">
+          <p className="text-xs text-zinc-400 max-w-xs">
             Restricted administrative system. All access attempts and security events are logged with audit trails.
           </p>
         </div>
 
         {/* Login Card */}
-        <Card className="border-border/80 shadow-lg">
+        <Card className="border-[rgba(255,255,255,0.08)] bg-[#121215] text-[#FAFAFA] shadow-xl">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl font-bold tracking-tight">Admin Sign In</CardTitle>
-            <CardDescription className="text-xs">
+            <CardTitle className="text-xl font-bold tracking-tight text-[#FAFAFA]">Admin Sign In</CardTitle>
+            <CardDescription className="text-xs text-zinc-400">
               Authenticate with your provisioned campus administrator credentials and security key.
             </CardDescription>
           </CardHeader>
@@ -93,10 +111,10 @@ export function AdminLoginPage() {
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               {errorMsg && (
-                <Alert variant="destructive" className="py-2.5">
-                  <ShieldAlert className="size-4" />
-                  <AlertTitle className="text-xs font-semibold">Authentication Failed</AlertTitle>
-                  <AlertDescription className="text-xs mt-0.5">
+                <Alert variant="destructive" className="py-2.5 bg-red-950/30 border-red-900/50 text-red-300">
+                  <ShieldAlert className="size-4 text-red-400" />
+                  <AlertTitle className="text-xs font-semibold text-red-300">Authentication Failed</AlertTitle>
+                  <AlertDescription className="text-xs mt-0.5 text-red-200">
                     {errorMsg}
                   </AlertDescription>
                 </Alert>
@@ -104,7 +122,7 @@ export function AdminLoginPage() {
 
               {/* Email */}
               <div className="space-y-1.5">
-                <Label htmlFor="admin-email" className="text-xs font-medium">
+                <Label htmlFor="admin-email" className="text-xs font-mono text-zinc-300">
                   Administrator Email
                 </Label>
                 <div className="relative">
@@ -116,16 +134,16 @@ export function AdminLoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isSubmitting}
-                    className="pl-9 h-10 text-sm"
+                    className="pl-9 h-10 text-sm bg-[#18181B] border-[rgba(255,255,255,0.12)] text-[#FAFAFA] placeholder:text-zinc-600"
                     required
                   />
-                  <Mail className="size-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
+                  <Mail className="size-4 text-zinc-400 absolute left-3 top-3 pointer-events-none" />
                 </div>
               </div>
 
               {/* Password */}
               <div className="space-y-1.5">
-                <Label htmlFor="admin-password" className="text-xs font-medium">
+                <Label htmlFor="admin-password" className="text-xs font-mono text-zinc-300">
                   Password
                 </Label>
                 <div className="relative">
@@ -137,21 +155,21 @@ export function AdminLoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isSubmitting}
-                    className="pl-9 h-10 text-sm"
+                    className="pl-9 h-10 text-sm bg-[#18181B] border-[rgba(255,255,255,0.12)] text-[#FAFAFA] placeholder:text-zinc-600"
                     required
                   />
-                  <Lock className="size-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
+                  <Lock className="size-4 text-zinc-400 absolute left-3 top-3 pointer-events-none" />
                 </div>
               </div>
 
               {/* Admin Access Key */}
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="admin-access-key" className="text-xs font-medium flex items-center gap-1.5">
-                    <KeyRound className="size-3.5 text-primary" />
+                  <Label htmlFor="admin-access-key" className="text-xs font-mono text-zinc-300 flex items-center gap-1.5">
+                    <KeyRound className="size-3.5 text-[#EA2E00]" />
                     <span>Admin Access Key</span>
                   </Label>
-                  <span className="text-[10px] font-mono text-muted-foreground">
+                  <span className="text-[10px] font-mono text-zinc-500">
                     Default: 2077
                   </span>
                 </div>
@@ -162,10 +180,10 @@ export function AdminLoginPage() {
                   value={accessKey}
                   onChange={(e) => setAccessKey(e.target.value)}
                   disabled={isSubmitting}
-                  className="h-10 text-sm font-mono tracking-widest text-center"
+                  className="h-10 text-sm font-mono tracking-widest text-center bg-[#18181B] border-[rgba(255,255,255,0.12)] text-[#FAFAFA] placeholder:text-zinc-600"
                   required
                 />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[11px] text-zinc-400">
                   Access keys are cryptographically hashed and verified server-side.
                 </p>
               </div>
@@ -175,7 +193,7 @@ export function AdminLoginPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-10 font-medium cursor-pointer shadow-xs gap-2"
+                className="w-full h-11 min-h-[44px] font-mono font-bold cursor-pointer shadow-xs gap-2 bg-[#EA2E00] hover:bg-[#CC2800] text-white border-0"
               >
                 {isSubmitting ? (
                   <>
@@ -193,9 +211,9 @@ export function AdminLoginPage() {
               <button
                 type="button"
                 onClick={() => navigate("/login")}
-                className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer pt-1"
+                className="flex items-center justify-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer pt-1 font-mono"
               >
-                <ArrowLeft className="size-3.5" />
+                <ArrowLeft className="size-3.5 text-[#EA2E00]" />
                 <span>Return to Student Sign In</span>
               </button>
             </CardFooter>

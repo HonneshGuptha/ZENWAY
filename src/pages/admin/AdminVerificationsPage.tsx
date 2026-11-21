@@ -260,12 +260,12 @@ export function AdminVerificationsPage() {
         className="space-y-6"
       >
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[rgba(255,255,255,0.08)]">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            <h1 className="text-2xl font-bold tracking-tight text-[#FAFAFA]">
               Student ID Verification Queue
             </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-zinc-400 mt-0.5">
               Review official campus student ID documents to grant peer exchange privileges.
             </p>
           </div>
@@ -274,16 +274,16 @@ export function AdminVerificationsPage() {
             size="sm"
             onClick={fetchVerifications}
             disabled={isLoading}
-            className="gap-2 cursor-pointer"
+            className="gap-2 cursor-pointer font-mono text-xs border-[rgba(255,255,255,0.12)] bg-[#121215] hover:bg-[#1C1C22] text-zinc-200"
           >
-            <RefreshCw className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`size-3.5 ${isLoading ? "animate-spin text-[#EA2E00]" : ""}`} />
             <span>Refresh</span>
           </Button>
         </div>
 
         {/* Tab Filter & Search Ribbon */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl">
+          <div className="flex items-center gap-1 bg-[#18181B] border border-[rgba(255,255,255,0.08)] p-1 rounded-xl">
             {(["pending", "approved", "rejected", "all"] as const).map((tab) => (
               <button
                 key={tab}
@@ -291,8 +291,8 @@ export function AdminVerificationsPage() {
                 onClick={() => setActiveTab(tab)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
                   activeTab === tab
-                    ? "bg-card text-foreground shadow-xs font-bold"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-[#27272A] text-[#FAFAFA] shadow-xs font-bold border border-[rgba(255,255,255,0.1)]"
+                    : "text-zinc-400 hover:text-[#FAFAFA]"
                 }`}
               >
                 {tab}
@@ -306,23 +306,23 @@ export function AdminVerificationsPage() {
               placeholder="Search by student, ID, or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-9 text-xs"
+              className="pl-8 h-9 text-xs bg-[#18181B] border-[rgba(255,255,255,0.12)] text-[#FAFAFA] placeholder:text-zinc-500"
             />
-            <Search className="size-3.5 text-muted-foreground absolute left-2.5 top-2.5 pointer-events-none" />
+            <Search className="size-3.5 text-zinc-400 absolute left-2.5 top-2.5 pointer-events-none" />
           </div>
         </div>
 
         {/* Submissions List */}
         {isLoading ? (
           <div className="min-h-[30vh] flex flex-col items-center justify-center space-y-3">
-            <Loader2 className="size-7 text-primary animate-spin" />
-            <span className="text-xs text-muted-foreground font-mono">Loading verification queue...</span>
+            <Loader2 className="size-7 text-[#EA2E00] animate-spin" />
+            <span className="text-xs text-zinc-400 font-mono">Loading verification queue...</span>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="p-12 text-center border border-dashed border-border rounded-xl space-y-2 bg-muted/10">
-            <FileCheck2 className="size-10 text-muted-foreground/50 mx-auto" />
-            <h3 className="font-semibold text-sm text-foreground">No verifications found</h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+          <div className="p-12 text-center border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl space-y-2 bg-[#121215]">
+            <FileCheck2 className="size-10 text-zinc-600 mx-auto" />
+            <h3 className="font-semibold text-sm text-[#FAFAFA]">No verifications found</h3>
+            <p className="text-xs text-zinc-400 max-w-sm mx-auto">
               {activeTab === "pending"
                 ? "All pending student ID documents have been reviewed."
                 : `No ${activeTab} verification records match the current filter.`}
@@ -336,21 +336,23 @@ export function AdminVerificationsPage() {
               const isRejected = record.status === "rejected"
 
               return (
-                <Card key={record.id} className="border-border/80 flex flex-col justify-between">
+                <Card key={record.id} className="border-[rgba(255,255,255,0.08)] bg-[#121215] flex flex-col justify-between text-[#FAFAFA]">
                   <CardHeader className="p-4 pb-3">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <CardTitle className="text-base font-semibold text-foreground">
+                        <CardTitle className="text-base font-semibold text-[#FAFAFA]">
                           {record.full_name}
                         </CardTitle>
-                        <CardDescription className="text-xs font-mono text-muted-foreground">
+                        <CardDescription className="text-xs font-mono text-zinc-400">
                           {record.email}
                         </CardDescription>
                       </div>
 
                       <Badge
                         variant={isApproved ? "default" : isPending ? "outline" : "destructive"}
-                        className="text-[10px] capitalize font-semibold"
+                        className={`text-[10px] capitalize font-semibold ${
+                          isApproved ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/30" : isPending ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"
+                        }`}
                       >
                         {record.status}
                       </Badge>
@@ -358,64 +360,64 @@ export function AdminVerificationsPage() {
                   </CardHeader>
 
                   <CardContent className="p-4 pt-0 space-y-2.5 text-xs">
-                    <div className="grid grid-cols-2 gap-2 bg-muted/30 p-2.5 rounded-lg border border-border/50">
+                    <div className="grid grid-cols-2 gap-2 bg-[#18181B] p-2.5 rounded-lg border border-[rgba(255,255,255,0.06)]">
                       <div>
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                        <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold font-mono">
                           Student ID #
                         </span>
-                        <p className="font-mono font-medium text-foreground">{record.student_id_number}</p>
+                        <p className="font-mono font-medium text-[#FAFAFA]">{record.student_id_number}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                        <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold font-mono">
                           Document Type
                         </span>
-                        <p className="font-medium text-foreground capitalize">
+                        <p className="font-medium text-[#FAFAFA] capitalize">
                           {record.document_type.replace(/_/g, " ")}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                    <div className="flex items-center justify-between text-zinc-400 text-[11px]">
                       <span className="flex items-center gap-1">
-                        <GraduationCap className="size-3.5" />
+                        <GraduationCap className="size-3.5 text-zinc-400" />
                         <span>{record.university_name || "Campus Student"}</span>
                       </span>
-                      <span className="flex items-center gap-1 font-mono">
-                        <Calendar className="size-3.5" />
+                      <span className="flex items-center gap-1 font-mono text-zinc-400">
+                        <Calendar className="size-3.5 text-zinc-400" />
                         <span>{new Date(record.created_at).toLocaleDateString()}</span>
                       </span>
                     </div>
 
                     {isRejected && record.rejection_reason && (
-                      <div className="p-2 rounded bg-destructive/10 text-destructive text-[11px] flex items-start gap-1.5">
-                        <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
+                      <div className="p-2 rounded bg-red-950/20 text-red-300 border border-red-900/30 text-[11px] flex items-start gap-1.5">
+                        <AlertCircle className="size-3.5 shrink-0 mt-0.5 text-red-400" />
                         <div>
-                          <span className="font-semibold">Rejection reason:</span> {record.rejection_reason}
+                          <span className="font-semibold text-red-300">Rejection reason:</span> {record.rejection_reason}
                         </div>
                       </div>
                     )}
                   </CardContent>
 
-                  <div className="p-4 pt-2 border-t border-border/60 flex items-center justify-between gap-2">
+                  <div className="p-4 pt-2 border-t border-[rgba(255,255,255,0.08)] flex items-center justify-between gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleViewDocument(record)}
                       disabled={loadingPreview}
-                      className="text-xs h-8 gap-1.5 cursor-pointer"
+                      className="text-xs h-8 gap-1.5 cursor-pointer font-mono border-[rgba(255,255,255,0.12)] bg-[#18181B] hover:bg-[#27272A] text-zinc-200"
                     >
-                      <Eye className="size-3.5" />
+                      <Eye className="size-3.5 text-[#EA2E00]" />
                       <span>Inspect ID</span>
                     </Button>
 
                     {isPending && (
                       <div className="flex items-center gap-2">
                         <Button
-                          variant="destructive"
+                          variant="outline"
                           size="sm"
                           onClick={() => setRejectDialogRecord(record)}
                           disabled={processingId === record.id}
-                          className="text-xs h-8 gap-1 cursor-pointer"
+                          className="text-xs h-8 gap-1 cursor-pointer font-mono border-red-950/60 bg-red-950/20 hover:bg-red-900/40 text-red-400"
                         >
                           <XCircle className="size-3.5" />
                           <span>Reject</span>
@@ -424,7 +426,7 @@ export function AdminVerificationsPage() {
                           size="sm"
                           onClick={() => handleApprove(record)}
                           disabled={processingId === record.id}
-                          className="text-xs h-8 gap-1 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white"
+                          className="text-xs h-8 gap-1 cursor-pointer font-mono bg-[#10B981] hover:bg-[#059669] text-black font-bold"
                         >
                           {processingId === record.id ? (
                             <Loader2 className="size-3.5 animate-spin" />
@@ -444,11 +446,11 @@ export function AdminVerificationsPage() {
 
         {/* Document Inspection Dialog */}
         <Dialog open={!!previewUrl} onOpenChange={(open) => !open && setPreviewUrl(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-4">
-            <DialogHeader className="pb-2 border-b border-border/60 flex flex-row items-center justify-between">
+          <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-4 bg-[#09090B] border-[rgba(255,255,255,0.15)] text-[#FAFAFA] dark">
+            <DialogHeader className="pb-2 border-b border-[rgba(255,255,255,0.08)] flex flex-row items-center justify-between">
               <div>
-                <DialogTitle className="text-base font-semibold">{previewDocTitle}</DialogTitle>
-                <DialogDescription className="text-xs">
+                <DialogTitle className="text-base font-semibold text-[#FAFAFA]">{previewDocTitle}</DialogTitle>
+                <DialogDescription className="text-xs text-zinc-400">
                   Signed temporary URL generated from secure storage bucket.
                 </DialogDescription>
               </div>
@@ -457,7 +459,7 @@ export function AdminVerificationsPage() {
                   href={previewUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline pr-6"
+                  className="inline-flex items-center gap-1 text-xs text-[#EA2E00] hover:underline pr-6 font-mono"
                 >
                   <ExternalLink className="size-3.5" />
                   <span>Open Full Screen</span>
@@ -465,14 +467,16 @@ export function AdminVerificationsPage() {
               )}
             </DialogHeader>
 
-            <div className="flex-1 overflow-auto flex items-center justify-center p-2 bg-muted/20 rounded-lg min-h-[300px]">
+            <div className="flex-1 overflow-auto flex items-center justify-center p-2 bg-[#121215] rounded-lg min-h-[300px] border border-[rgba(255,255,255,0.06)]">
               {previewUrl && (
                 previewUrl.includes(".pdf") ? (
-                  <iframe src={previewUrl} className="w-full h-[500px] rounded border border-border" title="Student ID PDF" />
+                  <iframe src={previewUrl} className="w-full h-[500px] rounded border border-[rgba(255,255,255,0.1)]" title="Student ID PDF" />
                 ) : (
                   <img
                     src={previewUrl}
                     alt="Student ID Preview"
+                    loading="lazy"
+                    decoding="async"
                     className="max-h-[500px] w-auto object-contain rounded-md shadow-md"
                   />
                 )
@@ -480,7 +484,7 @@ export function AdminVerificationsPage() {
             </div>
 
             <DialogFooter className="pt-2">
-              <Button size="sm" variant="outline" onClick={() => setPreviewUrl(null)}>
+              <Button size="sm" variant="outline" onClick={() => setPreviewUrl(null)} className="font-mono text-xs border-[rgba(255,255,255,0.12)] bg-[#18181B] text-zinc-200">
                 Close Preview
               </Button>
             </DialogFooter>
@@ -489,26 +493,26 @@ export function AdminVerificationsPage() {
 
         {/* Reject Dialog */}
         <Dialog open={!!rejectDialogRecord} onOpenChange={(open) => !open && setRejectDialogRecord(null)}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md bg-[#09090B] border-[rgba(255,255,255,0.15)] text-[#FAFAFA] dark">
             <DialogHeader>
-              <DialogTitle className="text-base font-semibold text-destructive flex items-center gap-2">
-                <AlertCircle className="size-4" />
-                <span>Reject Student ID Verification</span>
+              <DialogTitle className="text-base font-semibold text-red-400 flex items-center gap-2 font-mono">
+                <AlertCircle className="size-4 text-red-500" />
+                <span>REJECT STUDENT ID VERIFICATION</span>
               </DialogTitle>
-              <DialogDescription className="text-xs">
+              <DialogDescription className="text-xs text-zinc-400">
                 Provide an actionable reason explaining why the ID document could not be validated.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-3 py-2">
-              <div className="p-2.5 rounded-lg bg-muted text-xs space-y-1">
-                <p className="font-semibold text-foreground">{rejectDialogRecord?.full_name}</p>
-                <p className="text-muted-foreground font-mono">{rejectDialogRecord?.email}</p>
-                <p className="text-muted-foreground">ID #: {rejectDialogRecord?.student_id_number}</p>
+              <div className="p-2.5 rounded-lg bg-[#18181B] border border-[rgba(255,255,255,0.08)] text-xs space-y-1">
+                <p className="font-semibold text-[#FAFAFA]">{rejectDialogRecord?.full_name}</p>
+                <p className="text-zinc-400 font-mono">{rejectDialogRecord?.email}</p>
+                <p className="text-zinc-400 font-mono">ID #: {rejectDialogRecord?.student_id_number}</p>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="id-reject-reason" className="text-xs font-medium">
+                <Label htmlFor="id-reject-reason" className="text-xs font-mono text-zinc-300">
                   Rejection Reason (Required)
                 </Label>
                 <Textarea
@@ -517,7 +521,7 @@ export function AdminVerificationsPage() {
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                   disabled={isSubmittingReject}
-                  className="text-xs min-h-[80px]"
+                  className="text-xs min-h-[80px] bg-[#18181B] border-[rgba(255,255,255,0.1)] text-[#FAFAFA] placeholder:text-zinc-600"
                 />
               </div>
             </div>
@@ -528,6 +532,7 @@ export function AdminVerificationsPage() {
                 size="sm"
                 onClick={() => setRejectDialogRecord(null)}
                 disabled={isSubmittingReject}
+                className="font-mono text-xs border-[rgba(255,255,255,0.12)] bg-[#18181B] text-zinc-300"
               >
                 Cancel
               </Button>
@@ -536,6 +541,7 @@ export function AdminVerificationsPage() {
                 size="sm"
                 onClick={handleConfirmReject}
                 disabled={isSubmittingReject || !rejectionReason.trim()}
+                className="font-mono text-xs bg-red-600 hover:bg-red-700 text-white font-bold"
               >
                 {isSubmittingReject ? (
                   <Loader2 className="size-3.5 animate-spin" />

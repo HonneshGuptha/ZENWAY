@@ -1,103 +1,109 @@
 import * as React from "react"
 
 export interface ZenwayLogoProps extends React.HTMLAttributes<HTMLDivElement> {
-  /**
-   * Display size variant:
-   * - xs: h-5 (~20px height)
-   * - sm: h-6 (~24px height)
-   * - md: h-8 (~32px height, optimal for primary header)
-   * - lg: h-9 (~36px height, optimal for footer)
-   * - xl: h-12 (~48px height)
-   */
   size?: "xs" | "sm" | "md" | "lg" | "xl"
-
-  /**
-   * Variant mode:
-   * - "full": Complete official Concept 4 logo (bicycle icon + lowercase "zenway" wordmark)
-   * - "icon": Standalone bicycle icon mark
-   */
   variant?: "full" | "icon"
-
-  /**
-   * Whether to display the subtle "Campus" badge beside the logo
-   */
   withBadge?: boolean
-
-  /**
-   * Custom alt attribute for the logo image
-   */
   alt?: string
 }
 
-const sizeConfig = {
-  xs: {
-    full: "h-5 w-auto max-w-[120px]",
-    icon: "h-5 w-auto",
-    badge: "text-[9px] px-1 py-0.2",
-  },
-  sm: {
-    full: "h-5 sm:h-6 w-auto max-w-[135px] sm:max-w-[155px]",
-    icon: "h-5 sm:h-6 w-auto",
-    badge: "text-[10px] px-1.5 py-0.5",
-  },
-  md: {
-    full: "h-6 sm:h-8 w-auto max-w-[150px] sm:max-w-[195px]",
-    icon: "h-6 sm:h-8 w-auto",
-    badge: "hidden sm:inline-flex text-[10px] px-1.5 py-0.5",
-  },
-  lg: {
-    full: "h-7 sm:h-9 w-auto max-w-[170px] sm:max-w-[220px]",
-    icon: "h-7 sm:h-9 w-auto",
-    badge: "text-[11px] px-2 py-0.5",
-  },
-  xl: {
-    full: "h-10 sm:h-12 w-auto max-w-[240px] sm:max-w-[280px]",
-    icon: "h-10 sm:h-12 w-auto",
-    badge: "text-xs px-2 py-0.5",
-  },
+const heightMap = {
+  xs: "h-5",
+  sm: "h-6",
+  md: "h-8",
+  lg: "h-9",
+  xl: "h-12",
+}
+
+const badgeSizeMap = {
+  xs: "text-[9px] px-1 py-0.2",
+  sm: "text-[10px] px-1.5 py-0.5",
+  md: "hidden sm:inline-flex text-[10px] px-1.5 py-0.5",
+  lg: "text-[11px] px-2 py-0.5",
+  xl: "text-xs px-2 py-0.5",
 }
 
 /**
- * ZenwayLogo — Centralized official brand mark for ZENWAY.
+ * ZenwayLogo — Mathematically Parallel "Cut-Ribbon Z" Brand Mark for ZENWAY.
  * 
- * Implements Concept 4 (Approved 10 November 2026):
- * Lowercase teal/blue-gradient "zenway" wordmark with the bicycle icon to its left.
- * Preserves original proportions (524:89), typography, bicycle icon, and gradient.
+ * - High-contrast Deep Charcoal Ink (#141413 in Warm Daylight / #FAFAFA in Dark Commute)
+ *   via currentColor so it never dissolves into any background.
+ * - Single separated Signal Vermilion (#EA2E00) kinetic spark.
+ * - True parallel ribbon geometry with crisp 45-degree ribbon cut.
  */
 export function ZenwayLogo({
   size = "md",
   variant = "full",
   withBadge = false,
-  alt = "ZENWAY Campus Mobility",
   className = "",
   ...props
 }: ZenwayLogoProps) {
-  const currentSize = sizeConfig[size] || sizeConfig.md
-  const imageSrc =
-    variant === "icon"
-      ? "/assets/brand/zenway-bike-icon.png"
-      : "/assets/brand/zenway-logo.png"
+  const heightClass = heightMap[size] || heightMap.md
+  const badgeClass = badgeSizeMap[size] || badgeSizeMap.md
 
   return (
     <div
-      className={`inline-flex items-center gap-2 select-none ${className}`}
+      className={`inline-flex items-center gap-2 select-none text-foreground ${className}`}
       {...props}
     >
-      <img
-        src={imageSrc}
-        alt={alt}
-        width={variant === "icon" ? 121 : 524}
-        height={variant === "icon" ? 79 : 89}
-        loading="eager"
-        decoding="async"
-        className={`${
-          variant === "icon" ? currentSize.icon : currentSize.full
-        } object-contain transition-all dark:brightness-110 dark:contrast-105`}
-      />
+      {variant === "icon" ? (
+        /* Standalone Cut-Ribbon Z Mark */
+        <svg
+          data-zen-ref="SE5HLTI1RVRBSTQxMDA1NS1aRU5XQVktMjAyNg=="
+          viewBox="0 0 40 40"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className={`${heightClass} w-auto overflow-visible shrink-0`}
+          aria-label="ZENWAY icon"
+        >
+          {/* Top horizontal bar with crisp 45-degree ribbon cut */}
+          <path d="M6 8H22L17 14.5H6V8Z" fill="currentColor" />
+          {/* Continuous bold diagonal sweep + bottom bar */}
+          <path d="M25.5 8H34L20 25.5H34V32H6L25.5 8Z" fill="currentColor" />
+          {/* Single separated Signal Vermilion kinetic spark */}
+          <circle cx="8.5" cy="21" r="3" fill="#EA2E00" />
+        </svg>
+      ) : (
+        /* Full Bespoke Vector Logo: Cut-Ribbon Z Mark + "zenway" Wordmark + Vermilion Dot */
+        <svg
+          data-zen-ref="SE5HLTI1RVRBSTQxMDA1NS1aRU5XQVktMjAyNg=="
+          viewBox="0 0 148 40"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className={`${heightClass} w-auto overflow-visible shrink-0`}
+          aria-label="ZENWAY"
+        >
+          {/* Cut-Ribbon Z Mark */}
+          <g>
+            {/* Top horizontal bar with crisp 45-degree ribbon cut */}
+            <path d="M6 8H22L17 14.5H6V8Z" fill="currentColor" />
+            {/* Continuous bold diagonal sweep + bottom bar */}
+            <path d="M25.5 8H34L20 25.5H34V32H6L25.5 8Z" fill="currentColor" />
+            {/* Single separated Signal Vermilion kinetic spark */}
+            <circle cx="8.5" cy="21" r="3" fill="#EA2E00" />
+          </g>
+
+          {/* Lowercase "zenway" editorial wordmark in Deep Charcoal Ink */}
+          <text
+            x="45"
+            y="27.5"
+            fontFamily="var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+            fontSize="23.5"
+            fontWeight="900"
+            letterSpacing="-0.04em"
+            fill="currentColor"
+          >
+            zenway
+          </text>
+
+          {/* Signal Vermilion Accent Dot */}
+          <circle cx="138" cy="24.5" r="3" fill="#EA2E00" />
+        </svg>
+      )}
 
       {withBadge && (
         <span
-          className={`rounded-full border border-teal-500/25 bg-teal-500/10 dark:bg-teal-500/15 font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300 ${currentSize.badge}`}
+          className={`rounded-full border border-border bg-secondary/80 font-semibold uppercase tracking-wider text-foreground ${badgeClass}`}
         >
           Campus
         </span>

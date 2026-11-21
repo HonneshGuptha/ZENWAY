@@ -7,124 +7,147 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --zw-kernel-seed: "180607-HNG";
   font-family: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Campus Neutral Canvas & Surfaces */
-  --background: oklch(0.99 0.005 240);
-  --foreground: oklch(0.14 0.02 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.14 0.02 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.14 0.02 260);
+  /* ZENWAY Brand Tokens: Warm Editorial Daylight */
+  --bg-canvas: #F0E7D6;
+  --bg-surface: #FAF6EE;
+  --bg-surface-muted: #E6DBC7;
+  --text-primary: #141413;
+  --text-muted: #57534E;
+  --accent-primary: #EA2E00;
+  --accent-primary-hover: #CC2800;
+  --accent-secondary: #9DBDB8;
+  --border-subtle: rgba(20, 20, 19, 0.14);
 
-  /* Primary Brand: Zenith Blue */
-  --primary: oklch(0.48 0.22 260);
-  --primary-foreground: oklch(1 0 0);
+  /* Semantic UI Tokens mapped to Brand Tokens */
+  --background: #F0E7D6;
+  --foreground: #141413;
+  --card: #FAF6EE;
+  --card-foreground: #141413;
+  --popover: #FAF6EE;
+  --popover-foreground: #141413;
 
-  /* Secondary: Neutral Subsurface */
-  --secondary: oklch(0.96 0.01 240);
-  --secondary-foreground: oklch(0.20 0.03 260);
+  /* Primary Brand: Signal Vermilion */
+  --primary: #EA2E00;
+  --primary-foreground: #FAF6EE;
+
+  /* Secondary: Warm Sand */
+  --secondary: #E6DBC7;
+  --secondary-foreground: #141413;
 
   /* Muted Utilities */
-  --muted: oklch(0.96 0.01 240);
-  --muted-foreground: oklch(0.55 0.03 250);
+  --muted: #E6DBC7;
+  --muted-foreground: #57534E;
 
-  /* Accent: Pulse Tangerine (High-Priority Action / Booking) */
-  --accent: oklch(0.62 0.21 42);
-  --accent-foreground: oklch(1 0 0);
+  /* Accent: Signal Vermilion */
+  --accent: #EA2E00;
+  --accent-foreground: #FAF6EE;
 
-  /* Safety & Verification Emerald */
-  --safety: oklch(0.60 0.17 155);
-  --safety-foreground: oklch(1 0 0);
+  /* Safety & Verification: Muted Sage */
+  --safety: #9DBDB8;
+  --safety-foreground: #141413;
 
-  /* Destructive / Emergency Alert */
-  --destructive: oklch(0.58 0.22 27);
-  --destructive-foreground: oklch(1 0 0);
+  /* Destructive Alert */
+  --destructive: #DC2626;
+  --destructive-foreground: #FAF6EE;
 
   /* Borders & Inputs */
-  --border: oklch(0.92 0.01 240);
-  --input: oklch(0.92 0.01 240);
-  --ring: oklch(0.55 0.22 260);
+  --border: rgba(20, 20, 19, 0.14);
+  --input: rgba(20, 20, 19, 0.14);
+  --ring: #EA2E00;
 
   /* Transit Telemetry Charts */
-  --chart-1: oklch(0.48 0.22 260);
-  --chart-2: oklch(0.62 0.21 42);
-  --chart-3: oklch(0.60 0.17 155);
-  --chart-4: oklch(0.55 0.18 290);
-  --chart-5: oklch(0.70 0.15 80);
+  --chart-1: #EA2E00;
+  --chart-2: #9DBDB8;
+  --chart-3: #141413;
+  --chart-4: #57534E;
+  --chart-5: #E6DBC7;
 
   /* 12px Base Radius */
   --radius: 0.75rem;
 
   /* Sidebar Compatibility */
-  --sidebar: oklch(0.99 0.005 240);
-  --sidebar-foreground: oklch(0.14 0.02 260);
-  --sidebar-primary: oklch(0.48 0.22 260);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.96 0.01 240);
-  --sidebar-accent-foreground: oklch(0.14 0.02 260);
-  --sidebar-border: oklch(0.92 0.01 240);
-  --sidebar-ring: oklch(0.55 0.22 260);
+  --sidebar: #FAF6EE;
+  --sidebar-foreground: #141413;
+  --sidebar-primary: #EA2E00;
+  --sidebar-primary-foreground: #FAF6EE;
+  --sidebar-accent: #E6DBC7;
+  --sidebar-accent-foreground: #141413;
+  --sidebar-border: rgba(20, 20, 19, 0.14);
+  --sidebar-ring: #EA2E00;
 }
 
 .dark {
-  /* Dark Void Canvas & Elevated Cards */
-  --background: oklch(0.14 0.025 260);
-  --foreground: oklch(0.98 0.005 240);
-  --card: oklch(0.19 0.03 260);
-  --card-foreground: oklch(0.98 0.005 240);
-  --popover: oklch(0.19 0.03 260);
-  --popover-foreground: oklch(0.98 0.005 240);
+  /* ZENWAY Brand Tokens: Dark Commute */
+  --bg-canvas: #18181B;
+  --bg-surface: #222226;
+  --bg-surface-muted: #2A2A30;
+  --text-primary: #FAFAFA;
+  --text-muted: #A1A1AA;
+  --accent-primary: #EA2E00;
+  --accent-primary-hover: #CC2800;
+  --accent-secondary: #9DBDB8;
+  --border-subtle: rgba(255, 255, 255, 0.12);
 
-  /* Primary Brand: Zenith Blue (Calibrated for Dark Contrast) */
-  --primary: oklch(0.62 0.20 255);
-  --primary-foreground: oklch(0.14 0.02 260);
+  /* Semantic UI Tokens mapped to Dark Commute */
+  --background: #18181B;
+  --foreground: #FAFAFA;
+  --card: #222226;
+  --card-foreground: #FAFAFA;
+  --popover: #222226;
+  --popover-foreground: #FAFAFA;
+
+  /* Primary Brand: Signal Vermilion (Consistent across themes) */
+  --primary: #EA2E00;
+  --primary-foreground: #FAF6EE;
 
   /* Secondary: Dark Subsurface */
-  --secondary: oklch(0.24 0.025 260);
-  --secondary-foreground: oklch(0.98 0.005 240);
+  --secondary: #2A2A30;
+  --secondary-foreground: #FAFAFA;
 
   /* Muted Utilities */
-  --muted: oklch(0.24 0.025 260);
-  --muted-foreground: oklch(0.70 0.02 250);
+  --muted: #2A2A30;
+  --muted-foreground: #A1A1AA;
 
-  /* Accent: Pulse Tangerine (Vibrant Dark Glow) */
-  --accent: oklch(0.72 0.18 50);
-  --accent-foreground: oklch(0.14 0.02 260);
+  /* Accent: Signal Vermilion */
+  --accent: #EA2E00;
+  --accent-foreground: #FAF6EE;
 
-  /* Safety Emerald (Night Glow) */
-  --safety: oklch(0.75 0.16 155);
-  --safety-foreground: oklch(0.14 0.02 260);
+  /* Safety: Muted Sage */
+  --safety: #9DBDB8;
+  --safety-foreground: #18181B;
 
   /* Destructive Alert */
-  --destructive: oklch(0.65 0.22 25);
-  --destructive-foreground: oklch(0.98 0.005 240);
+  --destructive: #EF4444;
+  --destructive-foreground: #FAFAFA;
 
   /* Borders & Inputs */
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.70 0.18 255);
+  --border: rgba(255, 255, 255, 0.12);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #EA2E00;
 
   /* Dark Transit Charts */
-  --chart-1: oklch(0.62 0.20 255);
-  --chart-2: oklch(0.72 0.18 50);
-  --chart-3: oklch(0.75 0.16 155);
-  --chart-4: oklch(0.68 0.18 290);
-  --chart-5: oklch(0.75 0.15 80);
+  --chart-1: #EA2E00;
+  --chart-2: #9DBDB8;
+  --chart-3: #FAFAFA;
+  --chart-4: #A1A1AA;
+  --chart-5: #2A2A30;
 
   /* Dark Sidebar */
-  --sidebar: oklch(0.16 0.025 260);
-  --sidebar-foreground: oklch(0.98 0.005 240);
-  --sidebar-primary: oklch(0.62 0.20 255);
-  --sidebar-primary-foreground: oklch(0.14 0.02 260);
-  --sidebar-accent: oklch(0.24 0.025 260);
-  --sidebar-accent-foreground: oklch(0.98 0.005 240);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.70 0.18 255);
+  --sidebar: #222226;
+  --sidebar-foreground: #FAFAFA;
+  --sidebar-primary: #EA2E00;
+  --sidebar-primary-foreground: #FAF6EE;
+  --sidebar-accent: #2A2A30;
+  --sidebar-accent-foreground: #FAFAFA;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --sidebar-ring: #EA2E00;
 }
 
 @theme inline {
@@ -154,6 +177,14 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-surface-muted: var(--bg-surface-muted);
+  --color-vermilion: var(--accent-primary);
+  --color-vermilion-hover: var(--accent-primary-hover);
+  --color-sage: var(--accent-secondary);
+  --color-ink: var(--text-primary);
+
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -181,7 +212,19 @@
   --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.07);
   --shadow-lg: 0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.08);
   --shadow-xl: 0 20px 25px -5px rgb(15 23 42 / 0.1), 0 8px 10px -6px rgb(15 23 42 / 0.1);
-  --shadow-glow: 0 0 24px -4px oklch(0.48 0.22 260 / 25%);
+  --shadow-glow: 0 0 28px -2px rgba(234, 46, 0, 0.28);
+}
+
+.zen-glass {
+  background-color: rgba(250, 246, 238, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.dark .zen-glass {
+  background-color: rgba(34, 34, 38, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 * {
@@ -190,12 +233,14 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 @layer base {

@@ -163,7 +163,7 @@ export function ContactHandoffCard({
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer w-full sm:w-auto text-center"
+              className="inline-flex items-center justify-center gap-1.5 h-10 min-h-[44px] sm:min-h-[38px] px-4 rounded-lg bg-[#25D366] hover:bg-[#20ba59] active:scale-[0.98] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer w-full sm:w-auto text-center"
             >
               <svg className="size-3.5 fill-current shrink-0" viewBox="0 0 24 24">
                 <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.664-.699c.971.531 1.761.815 2.796.815 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.586-5.766-5.768-5.766zm9.969 5.766c0 5.518-4.482 10-10 10-1.745 0-3.376-.449-4.795-1.233l-5.205 1.365 1.391-5.077c-.886-1.488-1.391-3.23-1.391-5.055 0-5.518 4.482-10 10-10 5.518 0 10 4.482 10 10z"/>
@@ -175,7 +175,7 @@ export function ContactHandoffCard({
             {callUrl && (
               <a
                 href={callUrl}
-                className="inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-lg border border-border/80 bg-background hover:bg-muted text-foreground text-xs font-semibold shadow-xs transition-colors cursor-pointer w-full sm:w-auto text-center"
+                className="inline-flex items-center justify-center gap-1.5 h-10 min-h-[44px] sm:min-h-[38px] px-4 rounded-lg border border-border/80 bg-background hover:bg-muted active:scale-[0.98] text-foreground text-xs font-semibold shadow-xs transition-all cursor-pointer w-full sm:w-auto text-center"
               >
                 <Phone className="size-3 text-muted-foreground shrink-0" />
                 <span>Call</span>
