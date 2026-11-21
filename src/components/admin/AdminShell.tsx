@@ -100,7 +100,7 @@ export function AdminShell({ children, currentSection }: AdminShellProps) {
               aria-label="Zenway Command Center"
             >
               <ZenwayLogo size="sm" withBadge={false} className="text-[#FAFAFA]" />
-              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#18181B] border border-[rgba(255,255,255,0.1)] text-[#EA2E00] font-mono text-[10px] font-bold uppercase tracking-widest shadow-xs">
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#18181B] border border-[rgba(255,255,255,0.1)] text-[#EA2E00] font-mono text-[10px] font-bold uppercase tracking-widest shadow-xs">
                 <Terminal className="size-3" />
                 <span>COMMAND CENTER</span>
               </div>
@@ -120,10 +120,12 @@ export function AdminShell({ children, currentSection }: AdminShellProps) {
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[#18181B] hover:bg-[#27272A] text-zinc-200 hover:text-white text-xs font-mono font-medium transition-colors cursor-pointer"
+              aria-label="Exit to Student View"
+              title="Exit to Student View"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[#18181B] hover:bg-[#27272A] text-zinc-200 hover:text-white text-xs font-mono font-medium transition-colors cursor-pointer"
             >
               <ArrowLeft className="size-3.5 text-[#EA2E00]" />
-              <span>Exit to Student View</span>
+              <span className="hidden sm:inline">Exit to Student View</span>
             </button>
 
             {/* Admin identity */}

@@ -2,6 +2,7 @@ import * as React from "react"
 import { motion } from "motion/react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "@/context/RouterContext"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -94,6 +95,7 @@ interface RideRequestItem {
 
 export function RidePage() {
   const { user, profile, isVerified } = useAuth()
+  const { navigate } = useRouter()
 
   const [activeTab, setActiveTab] = React.useState<"browse" | "manage">("browse")
   const [rides, setRides] = React.useState<RideWithDriver[]>([])
@@ -101,6 +103,7 @@ export function RidePage() {
   const [mySentRequests, setMySentRequests] = React.useState<RideRequestItem[]>([])
   const [myPublishedRides, setMyPublishedRides] = React.useState<RideWithDriver[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [fetchError, setFetchError] = React.useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
 
@@ -158,6 +161,7 @@ export function RidePage() {
   const fetchRides = React.useCallback(async () => {
     try {
       setIsLoading(true)
+      setFetchError(null)
       const { data, error } = await supabase
         .from("rides")
         .select(`
@@ -179,6 +183,7 @@ export function RidePage() {
       setRides(formatted)
     } catch (err: any) {
       console.error("[RidePage] Fetch rides error:", err)
+      setFetchError(err.message || "Failed to load carpools.")
       toast.error(err.message || "Failed to load carpools.")
     } finally {
       setIsLoading(false)
@@ -546,13 +551,29 @@ export function RidePage() {
               <Loader2 className="size-7 text-primary animate-spin" />
               <span className="text-xs text-muted-foreground font-mono">Loading scheduled rides...</span>
             </div>
-          ) : filteredRides.length === 0 ? (
+          ) : fetchError ? (
             <EmptyState
-              variant="rides"
+              variant="error"
+              title="Failed to load scheduled rides"
+              description={fetchError}
+              actionLabel="Try Again"
+              onAction={fetchRides}
+            />
+          ) : rides.length === 0 ? (
+            <EmptyState
+              variant="no-data"
               title="No student carpools found"
-              description="No active carpools match your route or departure time. Offer empty seats in your car or bike to split fuel costs!"
+              description="No active carpools are scheduled right now. Offer empty seats in your car or bike to split fuel costs!"
               actionLabel={user ? "Offer a Ride" : undefined}
               onAction={user ? () => setIsPublishModalOpen(true) : undefined}
+            />
+          ) : filteredRides.length === 0 ? (
+            <EmptyState
+              variant="filtered-empty"
+              title="No rides match your search"
+              description={`No scheduled rides found matching "${searchQuery}". Try searching for another pickup point or destination.`}
+              actionLabel="Clear Search"
+              onAction={() => setSearchQuery("")}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -671,25 +692,13 @@ export function RidePage() {
             </h2>
 
             {myPublishedRides.length === 0 ? (
-              <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-card/50 flex flex-col items-center justify-center space-y-3">
-                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <Car className="size-5" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-semibold text-foreground">No Scheduled Rides</h3>
-                  <p className="text-xs text-muted-foreground max-w-sm">
-                    Heading somewhere on or around campus? Publish your route and share empty car seats with fellow students.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => setIsPublishModalOpen(true)}
-                  className="text-xs h-8 gap-1.5 cursor-pointer mt-1"
-                >
-                  <Plus className="size-3.5" />
-                  <span>Offer a Ride</span>
-                </Button>
-              </div>
+              <EmptyState
+                variant="no-data"
+                title="No scheduled rides"
+                description="Heading somewhere on or around campus? Publish your route and share empty car seats with fellow students."
+                actionLabel="Offer a Ride"
+                onAction={() => setIsPublishModalOpen(true)}
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {myPublishedRides.map((ride) => (
@@ -824,25 +833,13 @@ export function RidePage() {
             </h2>
 
             {mySentRequests.length === 0 ? (
-              <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-card/50 flex flex-col items-center justify-center space-y-3">
-                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <Users className="size-5" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-semibold text-foreground">No Carpool Reservations</h3>
-                  <p className="text-xs text-muted-foreground max-w-sm">
-                    Looking for a ride? Search active routes and reserve seats with verified campus drivers.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => setActiveTab("browse")}
-                  className="text-xs h-8 gap-1.5 cursor-pointer mt-1"
-                >
-                  <Search className="size-3.5" />
-                  <span>Find a Ride</span>
-                </Button>
-              </div>
+              <EmptyState
+                variant="no-data"
+                title="No carpool reservations"
+                description="Looking for a ride? Search active routes and reserve seats with verified campus drivers."
+                actionLabel="Find a Ride"
+                onAction={() => setActiveTab("browse")}
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {mySentRequests.map((req) => (
@@ -958,7 +955,19 @@ export function RidePage() {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handlePublishRide} className="space-y-3 py-2 text-xs">
+          {!isVerified ? (
+            <EmptyState
+              variant="unverified"
+              title="Student Verification Required"
+              description="To ensure rider safety on campus, only verified students can offer and publish carpool rides. Upload your student ID to verify."
+              actionLabel="Verify Student ID"
+              onAction={() => {
+                setIsPublishModalOpen(false)
+                navigate("/verify-student")
+              }}
+            />
+          ) : (
+            <form onSubmit={handlePublishRide} className="space-y-3 py-2 text-xs">
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <Label htmlFor="r-origin" className="text-xs">Pickup / Origin *</Label>
@@ -1082,6 +1091,7 @@ export function RidePage() {
               </Button>
             </DialogFooter>
           </form>
+          )}
         </DialogContent>
       </Dialog>
 

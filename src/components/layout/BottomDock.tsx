@@ -43,7 +43,8 @@ export function BottomDock({ currentTab, onTabChange }: BottomDockProps) {
             type="button"
             onClick={() => onTabChange(item.id)}
             aria-current={isActive ? "page" : undefined}
-            className={`relative px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.1em] uppercase transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center gap-1.5 ${
+            aria-label={item.label}
+            className={`relative min-h-[44px] min-w-[44px] justify-center px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.1em] uppercase transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center gap-1.5 ${
               isActive
                 ? "text-primary-foreground font-bold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
@@ -59,7 +60,7 @@ export function BottomDock({ currentTab, onTabChange }: BottomDockProps) {
             )}
 
             <Icon className="size-4 relative z-10 shrink-0" />
-            <span className="relative z-10 hidden xs:inline">{item.label}</span>
+            <span className="relative z-10 hidden sm:inline">{item.label}</span>
           </button>
         )
       })}

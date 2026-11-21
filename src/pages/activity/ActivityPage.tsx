@@ -6,6 +6,7 @@ import { useRouter } from "@/context/RouterContext"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { StatusBadge } from "@/components/ui/StatusBadge"
+import { EmptyState } from "@/components/ui/EmptyState"
 import {
   Activity,
   KeyRound,
@@ -39,11 +40,16 @@ export function ActivityPage() {
   const [activeRole, setActiveRole] = React.useState<"all" | "customer" | "provider">("all")
   const [activities, setActivities] = React.useState<UnifiedActivityItem[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [fetchError, setFetchError] = React.useState<string | null>(null)
 
   const fetchAllActivities = React.useCallback(async () => {
-    if (!user) return
+    if (!user) {
+      setIsLoading(false)
+      return
+    }
     try {
       setIsLoading(true)
+      setFetchError(null)
       const list: UnifiedActivityItem[] = []
 
       // 1. RENT: as renter
@@ -204,6 +210,7 @@ export function ActivityPage() {
       setActivities(list)
     } catch (err: any) {
       console.error("[ActivityPage] Fetch error:", err)
+      setFetchError(err.message || "Failed to load activity history.")
       toast.error(err.message || "Failed to load activity.")
     } finally {
       setIsLoading(false)
@@ -314,25 +321,35 @@ export function ActivityPage() {
           <Loader2 className="size-7 text-primary animate-spin" />
           <span className="text-xs text-muted-foreground font-mono">Loading activity history...</span>
         </div>
+      ) : fetchError ? (
+        <EmptyState
+          variant="error"
+          title="Failed to load exchange activity"
+          description={fetchError}
+          actionLabel="Try Again"
+          onAction={fetchAllActivities}
+        />
+      ) : activities.length === 0 ? (
+        <EmptyState
+          variant="no-data"
+          title="No exchange activity yet"
+          description="You haven't participated in any vehicle rentals, carpools, or package deliveries yet. Explore campus mobility services below!"
+          actionLabel="Explore Vehicles"
+          onAction={() => navigate("/rent")}
+          secondaryActionLabel="Browse Rides"
+          onSecondaryAction={() => navigate("/ride")}
+        />
       ) : filteredList.length === 0 ? (
-        <div className="p-12 text-center border border-dashed border-border rounded-xl space-y-3 bg-muted/10">
-          <Activity className="size-10 text-muted-foreground/50 mx-auto" />
-          <h3 className="font-semibold text-sm text-foreground">No recent activity</h3>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            You don't have any exchange transactions in this category yet.
-          </p>
-          <div className="flex justify-center gap-2 pt-2">
-            <Button size="sm" variant="outline" onClick={() => navigate("/rent")} className="text-xs cursor-pointer">
-              Explore RENT
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate("/ride")} className="text-xs cursor-pointer">
-              Explore RIDE
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate("/carry")} className="text-xs cursor-pointer">
-              Explore CARRY
-            </Button>
-          </div>
-        </div>
+        <EmptyState
+          variant="filtered-empty"
+          title="No activity matches your filters"
+          description={`No exchange records found for service "${activeService}" with role "${activeRole}".`}
+          actionLabel="Clear Filters"
+          onAction={() => {
+            setActiveService("all")
+            setActiveRole("all")
+          }}
+        />
       ) : (
         <div className="space-y-3">
           {filteredList.map((item) => {

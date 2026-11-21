@@ -2,6 +2,7 @@ import * as React from "react"
 import { motion } from "motion/react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "@/context/RouterContext"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -101,12 +102,14 @@ interface RentalRequestItem {
 
 export function RentPage() {
   const { user, profile, isVerified } = useAuth()
+  const { navigate } = useRouter()
 
   const [activeTab, setActiveTab] = React.useState<"browse" | "manage">("browse")
   const [vehicles, setVehicles] = React.useState<VehicleWithDetails[]>([])
   const [incomingRequests, setIncomingRequests] = React.useState<RentalRequestItem[]>([])
   const [mySentRequests, setMySentRequests] = React.useState<RentalRequestItem[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [fetchError, setFetchError] = React.useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null)
 
   // Filters
@@ -172,45 +175,11 @@ export function RentPage() {
     isPayer: false,
   })
 
-  // 3-Tier Payment Handlers
-  const handleReportPaymentSent = async (service: "rent", requestId: string, ref?: string) => {
-    try {
-      const { error } = await (supabase.rpc as any)("report_payment_sent", {
-        p_service: service,
-        p_request_id: requestId,
-        p_utr_reference: ref || null,
-      })
-      if (error) throw error
-      toast.success("Payment reported! Owner will confirm receipt upon vehicle handoff.")
-      await fetchUserRentals()
-    } catch (err: any) {
-      console.error("[RentPage] Report payment error:", err)
-      toast.error(err.message || "Failed to report payment.")
-    }
-  }
-
-  const handleConfirmSettlement = async (requestId: string) => {
-    try {
-      setActionLoadingId(requestId)
-      const { error } = await (supabase.rpc as any)("confirm_mutual_completion", {
-        p_service: "rent",
-        p_request_id: requestId,
-      })
-      if (error) throw error
-      toast.success("Payment verified and settled!")
-      await fetchUserRentals()
-    } catch (err: any) {
-      console.error("[RentPage] Confirm settlement error:", err)
-      toast.error(err.message || "Failed to confirm payment settlement.")
-    } finally {
-      setActionLoadingId(null)
-    }
-  }
-
   // Fetch Available Vehicles
   const fetchVehicles = React.useCallback(async () => {
     try {
       setIsLoading(true)
+      setFetchError(null)
       const { data: vehicleData, error: vErr } = await supabase
         .from("vehicles")
         .select(`
@@ -254,6 +223,7 @@ export function RentPage() {
       setVehicles(formatted)
     } catch (err: any) {
       console.error("[RentPage] Fetch vehicles error:", err)
+      setFetchError(err.message || "Failed to load vehicle listings.")
       toast.error(err.message || "Failed to load vehicle listings.")
     } finally {
       setIsLoading(false)
@@ -728,13 +698,32 @@ export function RentPage() {
               <Loader2 className="size-7 text-primary animate-spin" />
               <span className="text-xs text-muted-foreground font-mono">Loading available vehicles...</span>
             </div>
-          ) : filteredVehicles.length === 0 ? (
+          ) : fetchError ? (
             <EmptyState
-              variant="vehicles"
-              title="No student vehicles found"
-              description="No active bicycles or scooters match your search or filter. Be the first classmate to list one!"
+              variant="error"
+              title="Failed to load vehicles"
+              description={fetchError}
+              actionLabel="Try Again"
+              onAction={fetchVehicles}
+            />
+          ) : vehicles.length === 0 ? (
+            <EmptyState
+              variant="no-data"
+              title="No student vehicles listed yet"
+              description="No active bicycles or scooters are listed on campus right now. Be the first classmate to list one and earn!"
               actionLabel={user ? "List Your Vehicle" : undefined}
               onAction={user ? () => setIsListModalOpen(true) : undefined}
+            />
+          ) : filteredVehicles.length === 0 ? (
+            <EmptyState
+              variant="filtered-empty"
+              title="No vehicles match your filter"
+              description={`No available vehicles match "${searchQuery || selectedType}". Try adjusting your search query or selecting "All Vehicles".`}
+              actionLabel="Clear Filters"
+              onAction={() => {
+                setSearchQuery("")
+                setSelectedType("all")
+              }}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -887,26 +876,13 @@ export function RentPage() {
             </h2>
 
             {incomingRequests.length === 0 ? (
-              <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-card/50 flex flex-col items-center justify-center space-y-3">
-                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <KeyRound className="size-5" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-semibold text-foreground">No Incoming Booking Requests</h3>
-                  <p className="text-xs text-muted-foreground max-w-sm">
-                    When students request to rent your listed vehicles, their requests will appear here for your review and approval.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setIsListModalOpen(true)}
-                  className="text-xs h-8 gap-1.5 cursor-pointer mt-1"
-                >
-                  <Plus className="size-3.5" />
-                  <span>List Another Vehicle</span>
-                </Button>
-              </div>
+              <EmptyState
+                variant="no-data"
+                title="No incoming rental requests"
+                description="When classmates request to rent your listed vehicles, their requests will appear here for review and confirmation."
+                actionLabel="List Another Vehicle"
+                onAction={() => setIsListModalOpen(true)}
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {incomingRequests.map((req) => (
@@ -1014,25 +990,13 @@ export function RentPage() {
             </h2>
 
             {mySentRequests.length === 0 ? (
-              <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-card/50 flex flex-col items-center justify-center space-y-3">
-                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <Bike className="size-5" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-semibold text-foreground">No Active Rental Requests</h3>
-                  <p className="text-xs text-muted-foreground max-w-sm">
-                    You haven't requested any vehicles yet. Find bicycles, e-scooters, and motorcycles available on your campus.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => setActiveTab("browse")}
-                  className="text-xs h-8 gap-1.5 cursor-pointer mt-1"
-                >
-                  <Search className="size-3.5" />
-                  <span>Browse Campus Vehicles</span>
-                </Button>
-              </div>
+              <EmptyState
+                variant="no-data"
+                title="No active reservations"
+                description="You haven't requested any vehicles yet. Find bicycles, e-scooters, and motorcycles available on your campus."
+                actionLabel="Browse Campus Vehicles"
+                onAction={() => setActiveTab("browse")}
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {mySentRequests.map((req) => (
@@ -1148,7 +1112,19 @@ export function RentPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreateListing} className="space-y-3 py-2 text-xs">
+          {!isVerified ? (
+            <EmptyState
+              variant="unverified"
+              title="Student Verification Required"
+              description="To ensure safety and community trust on campus, only verified students can list vehicles. Upload your college ID to unlock listing privileges."
+              actionLabel="Verify Student ID"
+              onAction={() => {
+                setIsListModalOpen(false)
+                navigate("/verify-student")
+              }}
+            />
+          ) : (
+            <form onSubmit={handleCreateListing} className="space-y-3 py-2 text-xs">
             <div className="space-y-1">
               <Label htmlFor="v-title" className="text-xs">Listing Title</Label>
               <Input
@@ -1298,6 +1274,7 @@ export function RentPage() {
               </Button>
             </DialogFooter>
           </form>
+          )}
         </DialogContent>
       </Dialog>
 

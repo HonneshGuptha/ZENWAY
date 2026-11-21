@@ -1,8 +1,17 @@
 import { motion } from "motion/react"
-import { Search, Compass, ShieldCheck, Wallet } from "lucide-react"
+import { Search, Compass, ShieldCheck, Wallet, FilterX, ShieldAlert, AlertCircle, RefreshCw } from "lucide-react"
 import { ZenwayMascot } from "./ZenwayMascot"
 
-export type EmptyStateVariant = "search" | "rides" | "vehicles" | "wallet" | "security"
+export type EmptyStateVariant =
+  | "search"
+  | "rides"
+  | "vehicles"
+  | "wallet"
+  | "security"
+  | "no-data"
+  | "filtered-empty"
+  | "unverified"
+  | "error"
 
 interface EmptyStateProps {
   variant?: EmptyStateVariant
@@ -10,6 +19,8 @@ interface EmptyStateProps {
   description: string
   actionLabel?: string
   onAction?: () => void
+  secondaryActionLabel?: string
+  onSecondaryAction?: () => void
   useMascot?: boolean
   className?: string
 }
@@ -20,10 +31,17 @@ export function EmptyState({
   description,
   actionLabel,
   onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
   useMascot = true,
   className = "",
 }: EmptyStateProps) {
-  const showMascot = useMascot && (variant === "rides" || variant === "vehicles" || variant === "search")
+  const showMascot =
+    useMascot &&
+    (variant === "rides" ||
+      variant === "vehicles" ||
+      variant === "search" ||
+      variant === "no-data")
 
   return (
     <motion.div
@@ -43,7 +61,7 @@ export function EmptyState({
           <ZenwayMascot pose="idle" size={130} />
         </div>
       ) : (
-        /* 3D-Styled Visual Icon Container (3dicons.co inspired) */
+        /* 3D-Styled Visual Icon Container */
         <div className="relative size-16 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/30 flex items-center justify-center shadow-md">
           <div className="size-10 rounded-xl bg-background/90 backdrop-blur-xs flex items-center justify-center shadow-xs">
             {variant === "search" && <Search className="size-5 text-primary stroke-[2.2]" />}
@@ -51,6 +69,10 @@ export function EmptyState({
             {variant === "vehicles" && <Search className="size-5 text-primary stroke-[2.2]" />}
             {variant === "wallet" && <Wallet className="size-5 text-emerald-600 dark:text-emerald-400 stroke-[2.2]" />}
             {variant === "security" && <ShieldCheck className="size-5 text-emerald-600 dark:text-emerald-400 stroke-[2.2]" />}
+            {variant === "filtered-empty" && <FilterX className="size-5 text-amber-500 stroke-[2.2]" />}
+            {variant === "no-data" && <Compass className="size-5 text-primary stroke-[2.2]" />}
+            {variant === "unverified" && <ShieldAlert className="size-5 text-destructive stroke-[2.2]" />}
+            {variant === "error" && <AlertCircle className="size-5 text-destructive stroke-[2.2]" />}
           </div>
         </div>
       )}
@@ -64,17 +86,32 @@ export function EmptyState({
         </p>
       </div>
 
-      {actionLabel && onAction && (
-        <motion.button
-          type="button"
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={onAction}
-          className="relative z-10 mt-2 px-4 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/25 text-primary text-xs font-semibold cursor-pointer transition-colors shadow-2xs"
-        >
-          {actionLabel}
-        </motion.button>
-      )}
+      <div className="flex flex-wrap items-center justify-center gap-2 pt-1 relative z-10">
+        {actionLabel && onAction && (
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onAction}
+            className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-semibold cursor-pointer transition-colors shadow-2xs flex items-center gap-1.5"
+          >
+            {variant === "error" && <RefreshCw className="size-3.5" />}
+            <span>{actionLabel}</span>
+          </motion.button>
+        )}
+
+        {secondaryActionLabel && onSecondaryAction && (
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onSecondaryAction}
+            className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 border border-border/80 text-foreground text-xs font-medium cursor-pointer transition-colors shadow-2xs"
+          >
+            {secondaryActionLabel}
+          </motion.button>
+        )}
+      </div>
     </motion.div>
   )
 }

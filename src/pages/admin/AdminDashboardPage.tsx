@@ -99,7 +99,6 @@ export function AdminDashboardPage() {
   // Clean Slate Reset state
   const [isResetDialogOpen, setIsResetDialogOpen] = React.useState(false)
   const [resetConfirmationText, setResetConfirmationText] = React.useState("")
-  const [resetStudentsCheckbox, setResetStudentsCheckbox] = React.useState(false)
   const [isExecutingReset, setIsExecutingReset] = React.useState(false)
 
   // Fetch pending verifications for quick queue
@@ -455,7 +454,6 @@ export function AdminDashboardPage() {
       toast.success("Platform demo data reset to clean slate successfully!")
       setIsResetDialogOpen(false)
       setResetConfirmationText("")
-      setResetStudentsCheckbox(false)
       await fetchStats()
     } catch (err: any) {
       console.error("[AdminDashboard] Reset failed:", err)

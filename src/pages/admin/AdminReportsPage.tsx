@@ -23,6 +23,10 @@ interface AuditLogRecord {
   details: any
   ip_address: string | null
   created_at: string
+  actor?: {
+    full_name: string | null
+    role: string | null
+  } | null
 }
 
 export function AdminReportsPage() {
@@ -35,7 +39,10 @@ export function AdminReportsPage() {
       setIsLoading(true)
       const { data, error } = await supabase
         .from("audit_logs")
-        .select("id, action, actor_id, target_entity, target_id, details, ip_address, created_at")
+        .select(`
+          id, action, actor_id, target_entity, target_id, details, ip_address, created_at,
+          actor:public_profiles!audit_logs_actor_id_fkey(full_name, role)
+        `)
         .order("created_at", { ascending: false })
         .limit(100)
 
@@ -154,7 +161,16 @@ export function AdminReportsPage() {
                         {log.target_entity}
                       </td>
                       <td className="p-3 text-muted-foreground">
-                        {log.actor_id ? `${log.actor_id.slice(0, 8)}...` : "system"}
+                        {log.actor?.full_name ? (
+                          <div className="flex flex-col">
+                            <span className="text-foreground font-semibold font-sans">{log.actor.full_name}</span>
+                            <span className="text-[10px] font-mono text-primary uppercase">{log.actor.role || "admin"}</span>
+                          </div>
+                        ) : log.actor_id ? (
+                          <span title={log.actor_id}>{`${log.actor_id.slice(0, 8)}...`}</span>
+                        ) : (
+                          <span className="text-zinc-500 italic">system</span>
+                        )}
                       </td>
                       <td className="p-3 pr-4 max-w-xs truncate text-muted-foreground">
                         <span title={JSON.stringify(log.details, null, 2)}>

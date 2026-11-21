@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "./ThemeToggle"
+import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown"
 import { ZenwayLogo } from "@/components/brand/ZenwayLogo"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "@/context/RouterContext"
@@ -112,8 +113,9 @@ export function Header({ currentTab, onTabChange }: HeaderProps) {
 
         {/* GROUP 2 (RIGHT): Post-Login Minimalist Avatar OR Logged-Out Floating Pill Nav */}
         {user ? (
-          /* Logged-In Top Bar: Pure Minimal Avatar with Verified Badge & Dropdown (Nav links live in BottomDock) */
-          <div className="flex items-center">
+          /* Logged-In Top Bar: Notifications bell & Minimal Avatar with Verified Badge */
+          <div className="flex items-center gap-2">
+            <NotificationsDropdown />
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -223,60 +225,75 @@ export function Header({ currentTab, onTabChange }: HeaderProps) {
             </DropdownMenu>
           </div>
         ) : (
-          /* Logged-Out Top Bar: Integrated Biosciences Floating Pill Bar */
-          <nav
-            className="flex items-center gap-1.5 rounded-full border border-border/80 bg-[var(--bg-surface)]/90 backdrop-blur-md px-2 py-1.5 shadow-xs"
-            aria-label="Main Navigation"
-          >
-            {loggedOutNavItems.map((item) => {
-              const isActive = item.tab && currentTab === item.tab
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleLoggedOutNav(item)}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`rounded-full px-3.5 py-1.5 text-[11px] font-semibold tracking-[0.12em] uppercase transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                    isActive
-                      ? "bg-background text-primary shadow-xs font-bold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  <span>{item.label}</span>
-                </button>
-              )
-            })}
+          /* Logged-Out Top Bar: Desktop Floating Pill Nav + Mobile Compact CTA */
+          <div className="flex items-center gap-2">
+            <nav
+              className="hidden md:flex items-center gap-1.5 rounded-full border border-border/80 bg-[var(--bg-surface)]/90 backdrop-blur-md px-2 py-1.5 shadow-xs"
+              aria-label="Main Navigation"
+            >
+              {loggedOutNavItems.map((item) => {
+                const isActive = item.tab && currentTab === item.tab
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleLoggedOutNav(item)}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`rounded-full px-3.5 py-1.5 text-[11px] font-semibold tracking-[0.12em] uppercase transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      isActive
+                        ? "bg-background text-primary shadow-xs font-bold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                  </button>
+                )
+              })}
 
-            <div className="h-4 w-[1px] bg-border/70 mx-0.5" aria-hidden="true" />
+              <div className="h-4 w-[1px] bg-border/70 mx-0.5" aria-hidden="true" />
 
-            {/* Guest Theme Toggle */}
-            <div className="flex items-center px-1">
+              {/* Guest Theme Toggle */}
+              <div className="flex items-center px-1">
+                <ThemeToggle />
+              </div>
+
+              <div className="h-4 w-[1px] bg-border/70 mx-0.5" aria-hidden="true" />
+
+              {/* Explicit Guest Login Option */}
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] uppercase text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                LOGIN
+              </button>
+
+              {/* Single Solid High-Contrast CTA */}
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate("/register")}
+                className="h-8 px-4 rounded-full bg-primary hover:bg-primary/95 text-primary-foreground text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-all shadow-xs flex items-center gap-1 shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span>GET STARTED</span>
+                <ArrowRight className="size-3" />
+              </motion.button>
+            </nav>
+
+            {/* Mobile guest compact login button */}
+            <div className="flex md:hidden items-center gap-2">
               <ThemeToggle />
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="h-8 px-3 rounded-full bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-semibold cursor-pointer shadow-xs flex items-center gap-1 shrink-0"
+              >
+                <span>Log In</span>
+                <ArrowRight className="size-3" />
+              </button>
             </div>
-
-            <div className="h-4 w-[1px] bg-border/70 mx-0.5" aria-hidden="true" />
-
-            {/* Explicit Guest Login Option */}
-            <button
-              type="button"
-              onClick={() => navigate("/login")}
-              className="rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] uppercase text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              LOGIN
-            </button>
-
-            {/* Single Solid High-Contrast CTA */}
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate("/register")}
-              className="h-8 px-4 rounded-full bg-primary hover:bg-primary/95 text-primary-foreground text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-all shadow-xs flex items-center gap-1 shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span>GET STARTED</span>
-              <ArrowRight className="size-3" />
-            </motion.button>
-          </nav>
+          </div>
         )}
       </div>
     </header>

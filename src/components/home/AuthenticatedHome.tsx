@@ -1,3 +1,4 @@
+import * as React from "react"
 import { motion, type Variants } from "motion/react"
 import {
   KeyRound,
@@ -11,7 +12,10 @@ import {
   CheckCircle2,
   Navigation,
   ChevronRight,
+  Bell,
+  ShieldAlert,
 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "@/context/RouterContext"
 import { ZenwayMascot } from "@/components/ui/ZenwayMascot"
@@ -64,6 +68,84 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
     if (hour < 17) return "Good afternoon"
     return "Good evening"
   })()
+
+  // Query pending incoming exchange requests awaiting current user action
+  const [pendingCounts, setPendingCounts] = React.useState<{
+    rent: number
+    ride: number
+    carry: number
+  }>({ rent: 0, ride: 0, carry: 0 })
+
+  React.useEffect(() => {
+    if (!user) return
+    let isMounted = true
+
+    async function checkPendingRequests() {
+      try {
+        // 1. Rent: pending requests on my vehicles
+        const { data: userVehicles } = await supabase
+          .from("vehicles")
+          .select("id")
+          .eq("owner_id", user!.id)
+        const vehicleIds = (userVehicles || []).map((v) => v.id)
+        let rentCount = 0
+        if (vehicleIds.length > 0) {
+          const { count } = await supabase
+            .from("rental_requests")
+            .select("id", { count: "exact", head: true })
+            .in("vehicle_id", vehicleIds)
+            .eq("status", "pending")
+          rentCount = count || 0
+        }
+
+        // 2. Ride: pending requests on my rides
+        const { data: userRides } = await supabase
+          .from("rides")
+          .select("id")
+          .eq("driver_id", user!.id)
+        const rideIds = (userRides || []).map((r) => r.id)
+        let rideCount = 0
+        if (rideIds.length > 0) {
+          const { count } = await supabase
+            .from("ride_requests")
+            .select("id", { count: "exact", head: true })
+            .in("ride_id", rideIds)
+            .eq("status", "pending")
+          rideCount = count || 0
+        }
+
+        // 3. Carry: pending offers on my open carry requests
+        const { data: userCarries } = await supabase
+          .from("carry_requests")
+          .select("id")
+          .eq("requester_id", user!.id)
+          .eq("status", "open")
+        const carryIds = (userCarries || []).map((c) => c.id)
+        let carryCount = 0
+        if (carryIds.length > 0) {
+          const { count } = await supabase
+            .from("carry_offers")
+            .select("id", { count: "exact", head: true })
+            .in("request_id", carryIds)
+            .eq("status", "pending")
+          carryCount = count || 0
+        }
+
+        if (isMounted) {
+          setPendingCounts({ rent: rentCount, ride: rideCount, carry: carryCount })
+        }
+      } catch (err) {
+        console.error("[AuthenticatedHome] Check pending error:", err)
+      }
+    }
+
+    checkPendingRequests()
+    return () => {
+      isMounted = false
+    }
+  }, [user])
+
+  const totalPending = pendingCounts.rent + pendingCounts.ride + pendingCounts.carry
 
   return (
     <motion.div
@@ -121,6 +203,113 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
           </div>
         </div>
       </motion.div>
+
+      {/* ACTION REQUIRED: PENDING PEER REQUESTS ALERT */}
+      {totalPending > 0 && (
+        <motion.div
+          variants={itemVariants}
+          className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 sm:p-5 shadow-xs"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="size-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                <Bell className="size-4.5 animate-bounce" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-heading font-bold text-sm text-foreground">Action Required: Pending Peer Requests</span>
+                  <span className="rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold text-[10px] px-2 py-0.2">
+                    {totalPending} waiting
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {pendingCounts.rent > 0 && `${pendingCounts.rent} rental request${pendingCounts.rent > 1 ? "s" : ""}`}
+                  {pendingCounts.rent > 0 && (pendingCounts.ride > 0 || pendingCounts.carry > 0) && " · "}
+                  {pendingCounts.ride > 0 && `${pendingCounts.ride} ride reservation${pendingCounts.ride > 1 ? "s" : ""}`}
+                  {(pendingCounts.rent > 0 || pendingCounts.ride > 0) && pendingCounts.carry > 0 && " · "}
+                  {pendingCounts.carry > 0 && `${pendingCounts.carry} carry offer${pendingCounts.carry > 1 ? "s" : ""}`}
+                  {" "}awaiting your confirmation.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+              {pendingCounts.rent > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate("rent")}
+                  className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-semibold cursor-pointer shadow-xs transition-colors"
+                >
+                  Manage Rentals
+                </button>
+              )}
+              {pendingCounts.ride > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate("ride")}
+                  className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold cursor-pointer shadow-xs transition-colors"
+                >
+                  Manage Rides
+                </button>
+              )}
+              {pendingCounts.carry > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate("carry")}
+                  className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground text-xs font-semibold cursor-pointer shadow-xs transition-colors"
+                >
+                  Manage Carry
+                </button>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* UNVERIFIED STUDENT ONBOARDING PROMPT */}
+      {!isVerified && (
+        <motion.div
+          variants={itemVariants}
+          className={`rounded-2xl border p-4 sm:p-5 shadow-xs ${
+            isPending
+              ? "border-amber-500/30 bg-amber-500/5 text-amber-900 dark:text-amber-200"
+              : "border-primary/30 bg-primary/5 text-foreground"
+          }`}
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div
+                className={`size-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                  isPending ? "bg-amber-500/20 text-amber-600 dark:text-amber-400" : "bg-primary/20 text-primary"
+                }`}
+              >
+                {isPending ? <Clock className="size-4.5" /> : <ShieldAlert className="size-4.5" />}
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="font-heading font-bold text-sm text-foreground">
+                  {isPending ? "Student ID Under Campus Review" : "Unlock Full Campus Mobility Access"}
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
+                  {isPending
+                    ? "Your student credentials have been submitted and are currently being reviewed by campus administration (typically 12–24 business hours). You will receive an in-app alert when approved."
+                    : "Student verification is required to borrow peer vehicles, reserve carpool seats, and request deliveries on ZENWAY. Submit your university ID card to get verified."}
+                </p>
+              </div>
+            </div>
+
+            <div className="shrink-0 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => navigate(isPending ? "/verification-status" : "/verify-student")}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-semibold cursor-pointer transition-all shadow-xs flex items-center justify-center gap-1.5"
+              >
+                <span>{isPending ? "View Verification Standing" : "Complete Student Verification"}</span>
+                <ArrowRight className="size-3.5" />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* 2. PRIMARY 3-WAY ACTION DOCK */}
       <motion.div variants={itemVariants} className="space-y-3">

@@ -2,6 +2,7 @@ import * as React from "react"
 import { motion } from "motion/react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "@/context/RouterContext"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -91,6 +92,7 @@ interface CarryOfferItem {
 
 export function CarryPage() {
   const { user, isVerified } = useAuth()
+  const { navigate } = useRouter()
 
   const [activeTab, setActiveTab] = React.useState<"browse" | "manage">("browse")
   const [requests, setRequests] = React.useState<CarryRequestWithDetails[]>([])
@@ -98,6 +100,7 @@ export function CarryPage() {
   const [mySentOffers, setMySentOffers] = React.useState<CarryOfferItem[]>([])
   const [myRequests, setMyRequests] = React.useState<CarryRequestWithDetails[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [fetchError, setFetchError] = React.useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null)
 
   // Filters
@@ -151,6 +154,7 @@ export function CarryPage() {
   const fetchCarryRequests = React.useCallback(async () => {
     try {
       setIsLoading(true)
+      setFetchError(null)
       const { data, error } = await supabase
         .from("carry_requests")
         .select(`
@@ -172,6 +176,7 @@ export function CarryPage() {
       setRequests(formatted)
     } catch (err: any) {
       console.error("[CarryPage] Fetch requests error:", err)
+      setFetchError(err.message || "Failed to load carry requests.")
       toast.error(err.message || "Failed to load carry requests.")
     } finally {
       setIsLoading(false)
@@ -551,13 +556,32 @@ export function CarryPage() {
               <Loader2 className="size-7 text-primary animate-spin" />
               <span className="text-xs text-muted-foreground font-mono">Loading delivery requests...</span>
             </div>
-          ) : filteredRequests.length === 0 ? (
+          ) : fetchError ? (
             <EmptyState
-              variant="search"
+              variant="error"
+              title="Failed to load delivery requests"
+              description={fetchError}
+              actionLabel="Try Again"
+              onAction={fetchCarryRequests}
+            />
+          ) : requests.length === 0 ? (
+            <EmptyState
+              variant="no-data"
               title="No open delivery requests"
-              description="No peer transport requests currently match this filter. Post a delivery if you need something carried across campus!"
+              description="No classmates have posted package delivery requests yet. Need a book, charger, or package moved across campus? Post your request!"
               actionLabel={user ? "Post Delivery Request" : undefined}
               onAction={user ? () => setIsCreateModalOpen(true) : undefined}
+            />
+          ) : filteredRequests.length === 0 ? (
+            <EmptyState
+              variant="filtered-empty"
+              title="No package requests match your filters"
+              description={`No delivery requests match "${searchQuery || selectedSize}". Try clearing your search query or selecting "All Sizes".`}
+              actionLabel="Clear Filters"
+              onAction={() => {
+                setSearchQuery("")
+                setSelectedSize("all")
+              }}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -681,25 +705,13 @@ export function CarryPage() {
             </h2>
 
             {myRequests.length === 0 ? (
-              <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-card/50 flex flex-col items-center justify-center space-y-3">
-                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <Package className="size-5" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-semibold text-foreground">No Delivery Requests Posted</h3>
-                  <p className="text-xs text-muted-foreground max-w-sm">
-                    Need textbooks, lab gear, or dorm items transported across campus? Post a delivery request for nearby peers.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="text-xs h-8 gap-1.5 cursor-pointer mt-1"
-                >
-                  <Plus className="size-3.5" />
-                  <span>Request Peer Delivery</span>
-                </Button>
-              </div>
+              <EmptyState
+                variant="no-data"
+                title="No delivery requests posted"
+                description="Need textbooks, lab gear, or dorm items transported across campus? Post a delivery request for nearby peers."
+                actionLabel="Request Peer Delivery"
+                onAction={() => setIsCreateModalOpen(true)}
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {myRequests.map((req) => (
@@ -859,25 +871,13 @@ export function CarryPage() {
             </h2>
 
             {mySentOffers.length === 0 ? (
-              <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl bg-card/50 flex flex-col items-center justify-center space-y-3">
-                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <Truck className="size-5" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-semibold text-foreground">No Delivery Offers Submitted</h3>
-                  <p className="text-xs text-muted-foreground max-w-sm">
-                    Heading across campus? Check open delivery requests and earn rewards by carrying items along your route.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => setActiveTab("browse")}
-                  className="text-xs h-8 gap-1.5 cursor-pointer mt-1"
-                >
-                  <Search className="size-3.5" />
-                  <span>Browse Campus Requests</span>
-                </Button>
-              </div>
+              <EmptyState
+                variant="no-data"
+                title="No delivery offers submitted"
+                description="Heading across campus? Check open delivery requests and earn rewards by carrying items along your route."
+                actionLabel="Browse Campus Requests"
+                onAction={() => setActiveTab("browse")}
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {mySentOffers.map((offer) => (
@@ -934,7 +934,19 @@ export function CarryPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreateRequest} className="space-y-3 py-2 text-xs">
+          {!isVerified ? (
+            <EmptyState
+              variant="unverified"
+              title="Student Verification Required"
+              description="To prevent package loss and ensure campus trust, only verified students can request or carry peer packages. Upload your student ID to verify."
+              actionLabel="Verify Student ID"
+              onAction={() => {
+                setIsCreateModalOpen(false)
+                navigate("/verify-student")
+              }}
+            />
+          ) : (
+            <form onSubmit={handleCreateRequest} className="space-y-3 py-2 text-xs">
             <div className="space-y-1">
               <Label htmlFor="c-title" className="text-xs">Item Title</Label>
               <Input
@@ -1082,6 +1094,7 @@ export function CarryPage() {
               </Button>
             </DialogFooter>
           </form>
+          )}
         </DialogContent>
       </Dialog>
 
