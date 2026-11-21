@@ -54,17 +54,22 @@ export function RouteGuard({ children }: RouteGuardProps) {
 
     // 4. If logged in and on regular auth page (login/register/forgot-password)
     if (user && (currentPath === "/login" || currentPath === "/register" || currentPath === "/forgot-password")) {
+      // Allow LoginPage to finish its smooth MascotLoader transition if currently active
+      try {
+        if (sessionStorage.getItem("zenway_auth_transition") === "true") {
+          return
+        }
+      } catch {
+        // Ignore storage errors in restricted contexts
+      }
+
       if (isAdmin) {
         navigate(adminAccessKeyVerified ? "/admin/dashboard" : "/admin/login", { replace: true })
         return
       }
-      if (isUnverified) {
-        navigate("/verify-student", { replace: true })
-      } else if (isPending) {
-        navigate("/verification-status", { replace: true })
-      } else {
-        navigate("/rent", { replace: true })
-      }
+
+      const redirectTarget = new URLSearchParams(window.location.search).get("redirect") || "/"
+      navigate(redirectTarget, { replace: true })
       return
     }
 

@@ -47,7 +47,7 @@ export function RegisterPage() {
   // Automatically redirect already authenticated users
   React.useEffect(() => {
     if (user) {
-      navigate("/rent", { replace: true })
+      navigate("/", { replace: true })
     }
   }, [user, navigate])
 

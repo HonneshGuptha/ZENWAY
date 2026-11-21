@@ -37,16 +37,39 @@ export function LoginPage() {
   const [pendingApprovalMsg, setPendingApprovalMsg] = React.useState<string | null>(null)
   const [rejectedMsg, setRejectedMsg] = React.useState<string | null>(null)
 
-  const redirectTarget = queryParams.get("redirect") || "/rent"
+  const redirectTarget = queryParams.get("redirect") || "/"
   const isConfirmed = queryParams.get("confirmed") === "true"
   const isResetSuccess = queryParams.get("reset") === "success"
+  const transitionTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Automatically redirect already authenticated users
+  // Clean up transition state and pending timeouts on unmount
   React.useEffect(() => {
-    if (user) {
+    return () => {
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current)
+      }
+      try {
+        sessionStorage.removeItem("zenway_auth_transition")
+      } catch {
+        // ignore
+      }
+    }
+  }, [])
+
+  // Automatically redirect already authenticated users who land on /login directly
+  React.useEffect(() => {
+    const isTransitioning = (() => {
+      try {
+        return sessionStorage.getItem("zenway_auth_transition") === "true"
+      } catch {
+        return false
+      }
+    })()
+
+    if (user && !isSubmitting && !isLoginTransitioning && !isTransitioning) {
       navigate(redirectTarget, { replace: true })
     }
-  }, [user, navigate, redirectTarget])
+  }, [user, navigate, redirectTarget, isSubmitting, isLoginTransitioning])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,6 +84,11 @@ export function LoginPage() {
 
     try {
       setIsSubmitting(true)
+      try {
+        sessionStorage.setItem("zenway_auth_transition", "true")
+      } catch {
+        // ignore
+      }
       const data = await signIn(email.trim(), password)
       setIsLoginTransitioning(true)
       let target = redirectTarget
@@ -77,10 +105,25 @@ export function LoginPage() {
           // fallback to default target
         }
       }
-      // Hold smooth transition window (2200ms) to ensure auth session and profile hydrate seamlessly
-      await new Promise((resolve) => setTimeout(resolve, 2200))
+      // Hold smooth transition window (2200ms) with MascotLoader to ensure auth session and profile hydrate seamlessly
+      await new Promise<void>((resolve) => {
+        transitionTimeoutRef.current = setTimeout(() => {
+          resolve()
+        }, 2200)
+      })
+      try {
+        sessionStorage.removeItem("zenway_auth_transition")
+      } catch {
+        // ignore
+      }
       navigate(target)
     } catch (err: any) {
+      try {
+        sessionStorage.removeItem("zenway_auth_transition")
+      } catch {
+        // ignore
+      }
+      setIsLoginTransitioning(false)
       console.error("[Login] Error:", err)
       const msg = err.message || ""
 
