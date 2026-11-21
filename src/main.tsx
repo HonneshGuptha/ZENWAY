@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { ThemeProvider } from '@/components/layout/ThemeProvider'
 import { AuthProvider } from '@/context/AuthContext'
 import { RouterProvider } from '@/context/RouterContext'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import './index.css'
 import App from './App.tsx'
 
@@ -27,8 +28,10 @@ createRoot(document.getElementById('root')!).render(
       <TooltipProvider>
         <AuthProvider>
           <RouterProvider>
-            <App />
-            <Toaster richColors position="top-right" />
+            <ErrorBoundary>
+              <App />
+              <Toaster richColors position="top-right" />
+            </ErrorBoundary>
           </RouterProvider>
         </AuthProvider>
       </TooltipProvider>

@@ -32,6 +32,7 @@ const TermsPage = React.lazy(() => import("@/pages/legal/TermsPage").then(m => (
 const PrivacyPage = React.lazy(() => import("@/pages/legal/PrivacyPage").then(m => ({ default: m.PrivacyPage })))
 const HelpPage = React.lazy(() => import("@/pages/support/HelpPage").then(m => ({ default: m.HelpPage })))
 const ContactPage = React.lazy(() => import("@/pages/support/ContactPage").then(m => ({ default: m.ContactPage })))
+const NotFoundPage = React.lazy(() => import("@/pages/support/NotFoundPage").then(m => ({ default: m.NotFoundPage })))
 
 // Dedicated Admin Portal Pages
 const AdminLoginPage = React.lazy(() => import("@/pages/admin/AdminLoginPage").then(m => ({ default: m.AdminLoginPage })))
@@ -78,11 +79,40 @@ function App() {
   }
 
   const isAdminPath = currentPath.startsWith("/admin")
+  const isKnownAdminPath =
+    currentPath === "/admin/login" ||
+    currentPath === "/admin/dashboard" ||
+    currentPath === "/admin/registrations" ||
+    currentPath === "/admin/verifications" ||
+    currentPath === "/admin/users" ||
+    currentPath === "/admin/moderation" ||
+    currentPath === "/admin/disputes" ||
+    currentPath === "/admin/reports"
+
   const isAuthPath =
     currentPath === "/login" ||
     currentPath === "/register" ||
     currentPath === "/forgot-password" ||
     currentPath === "/auth/callback"
+
+  const isKnownStudentPath =
+    (currentPath === "/" && currentTab === "home") ||
+    currentPath === "/rent" ||
+    currentPath === "/ride" ||
+    currentPath === "/carry" ||
+    currentPath === "/activity" ||
+    currentPath === "/profile" ||
+    currentTab === "rent" ||
+    currentTab === "ride" ||
+    currentTab === "carry" ||
+    currentTab === "activity" ||
+    currentTab === "profile" ||
+    currentPath === "/verify-student" ||
+    currentPath === "/verification-status" ||
+    currentPath === "/terms" ||
+    currentPath === "/privacy" ||
+    currentPath === "/help" ||
+    currentPath === "/contact"
 
   // Render dedicated Admin portal routes outside the student AppShell
   if (isAdminPath) {
@@ -135,6 +165,18 @@ function App() {
             {currentPath === "/admin/reports" && (
               <motion.div key="admin-reports" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
                 <AdminReportsPage />
+              </motion.div>
+            )}
+
+            {currentPath === "/admin" && (
+              <motion.div key="admin-root" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                <AdminDashboardPage />
+              </motion.div>
+            )}
+
+            {!isKnownAdminPath && currentPath !== "/admin" && (
+              <motion.div key="admin-not-found" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                <NotFoundPage />
               </motion.div>
             )}
           </AnimatePresence>
@@ -290,6 +332,13 @@ function App() {
               {currentPath === "/contact" && (
                 <motion.div key="contact" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
                   <ContactPage />
+                </motion.div>
+              )}
+
+              {/* 8. 404 NOT FOUND FALLBACK */}
+              {!isKnownStudentPath && (
+                <motion.div key="not-found" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                  <NotFoundPage />
                 </motion.div>
               )}
             </AnimatePresence>

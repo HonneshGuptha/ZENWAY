@@ -442,7 +442,7 @@ export function AdminDashboardPage() {
       }
 
       // Execute secure server-side RPC with session verification
-      const { data, error } = await (supabase.rpc as any)("clean_slate_demo_reset", {
+      const { error } = await (supabase.rpc as any)("clean_slate_demo_reset", {
         p_confirmation_token: "RESET",
       })
 
@@ -450,7 +450,6 @@ export function AdminDashboardPage() {
         throw error
       }
 
-      console.log("[AdminDashboard] Clean slate reset result:", data)
       toast.success("Platform demo data reset to clean slate successfully!")
       setIsResetDialogOpen(false)
       setResetConfirmationText("")
