@@ -245,6 +245,7 @@ export function RidePage() {
   // Publish Ride Handler
   const handlePublishRide = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmittingRide) return
     if (!user) return
     if (!isVerified) {
       toast.error("Student ID verification required before offering carpools.")
@@ -288,9 +289,10 @@ export function RidePage() {
     }
   }
 
-  // Join Ride Handler
+  // Join Ride Handler with Server-Side Price & Seat Integrity
   const handleConfirmJoin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmittingJoin) return
     if (!user || !joiningRide) return
     if (!isVerified) {
       toast.error("Student ID verification required before reserving seats.")
@@ -305,16 +307,35 @@ export function RidePage() {
 
     try {
       setIsSubmittingJoin(true)
-      const { error } = await supabase.from("ride_requests").insert({
-        ride_id: joiningRide.id,
-        passenger_id: user.id,
-        seats_requested: seatsNum,
-        total_price: (joiningRide.price_per_seat || 0) * seatsNum,
-        pickup_note: joinNotes.trim() || null,
-        status: "pending",
+
+      // 1. Authoritative server-side seat booking RPC
+      const { error: rpcErr } = await (supabase.rpc as any)("create_ride_booking", {
+        p_ride_id: joiningRide.id,
+        p_seats_requested: seatsNum,
+        p_pickup_note: joinNotes.trim() || null,
       })
 
-      if (error) throw error
+      if (rpcErr) {
+        // Fallback to direct insert if RPC not yet deployed in remote schema cache
+        const isMissingRpc =
+          rpcErr.message?.includes("schema cache") ||
+          rpcErr.code === "PGRST202" ||
+          rpcErr.code === "42883"
+
+        if (isMissingRpc) {
+          const { error: insertErr } = await supabase.from("ride_requests").insert({
+            ride_id: joiningRide.id,
+            passenger_id: user.id,
+            seats_requested: seatsNum,
+            total_price: (joiningRide.price_per_seat || 0) * seatsNum,
+            pickup_note: joinNotes.trim() || null,
+            status: "pending",
+          })
+          if (insertErr) throw insertErr
+        } else {
+          throw rpcErr
+        }
+      }
 
       toast.success("Seat request sent! The driver will review and confirm.")
       setJoiningRide(null)

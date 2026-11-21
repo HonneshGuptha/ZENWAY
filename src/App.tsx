@@ -54,7 +54,6 @@ function PageLoadingFallback() {
 function App() {
   const { user, isLoading } = useAuth()
   const { currentPath, currentTab, onTabChange } = useRouter()
-  const [minLoadingElapsed, setMinLoadingElapsed] = React.useState(false)
   const [showIntro, setShowIntro] = React.useState(() => {
     try {
       return sessionStorage.getItem("zenway_intro_seen") !== "true"
@@ -68,14 +67,12 @@ function App() {
     return <EntryIntro onComplete={() => setShowIntro(false)} />
   }
 
-  // 2. In-app auth hydration and loading with minimum smooth duration (2200ms) to prevent page flashes
-  if (isLoading || !minLoadingElapsed) {
+  // 2. Auth hydration loader (renders genuinely while session is being verified, without artificial delays)
+  if (isLoading) {
     return (
       <MascotLoader
         message="Restoring Campus Session..."
         fullscreen={true}
-        minDuration={2200}
-        onMinDurationElapsed={() => setMinLoadingElapsed(true)}
       />
     )
   }

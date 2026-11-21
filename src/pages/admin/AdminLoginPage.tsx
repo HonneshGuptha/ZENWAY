@@ -170,7 +170,7 @@ export function AdminLoginPage() {
                     <span>Admin Access Key</span>
                   </Label>
                   <span className="text-[10px] font-mono text-zinc-500">
-                    Default: 2077
+                    Required 2FA
                   </span>
                 </div>
                 <Input

@@ -75,6 +75,45 @@ export type Database = {
           },
         ]
       }
+      admin_sessions: {
+        Row: {
+          admin_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          session_token: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          session_token: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          session_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_sessions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_sessions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1185,8 +1224,8 @@ export type Database = {
         Returns: boolean
       }
       provision_initial_admin: {
-        Args: { p_user_email: string }
-        Returns: boolean
+        Args: { p_admin_key?: string; p_user_email: string }
+        Returns: string | boolean
       }
       reject_registration: {
         Args: { p_rejection_reason: string; p_user_id: string }
@@ -1213,6 +1252,39 @@ export type Database = {
       toggle_user_suspension: {
         Args: { p_reason?: string; p_suspend: boolean; p_user_id: string }
         Returns: boolean
+      }
+      admin_sign_out: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      check_admin_session: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      create_rental_booking: {
+        Args: {
+          p_vehicle_id: string
+          p_start_time: string
+          p_end_time: string
+          p_renter_notes?: string
+        }
+        Returns: string
+      }
+      create_ride_booking: {
+        Args: {
+          p_ride_id: string
+          p_seats_requested: number
+          p_pickup_note?: string
+        }
+        Returns: string
+      }
+      has_active_admin_session: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      provision_admin_access_key: {
+        Args: { p_new_key: string }
+        Returns: string
       }
       update_admin_access_key: {
         Args: { p_new_key: string; p_old_key: string }

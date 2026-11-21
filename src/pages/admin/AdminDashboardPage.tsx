@@ -415,8 +415,20 @@ export function AdminDashboardPage() {
     }
   }
 
+  // Production environment safety check
+  const isProductionDeployment =
+    Boolean(import.meta.env.PROD) ||
+    (typeof window !== "undefined" &&
+      (window.location.hostname === "zenway.runs-on.dev" ||
+        window.location.hostname.endsWith(".runs-on.dev")))
+
   // CLEAN SLATE RESET HANDLER
   const handleExecuteCleanSlateReset = async () => {
+    if (isProductionDeployment) {
+      toast.error("Clean-slate reset is permanently disabled in production.")
+      return
+    }
+
     if (resetConfirmationText !== "RESET") {
       toast.error("Please type RESET to confirm.")
       return
@@ -430,48 +442,17 @@ export function AdminDashboardPage() {
         throw new Error("No authenticated admin session found. Aborting.")
       }
 
-      // Foreign-key safe order deletion across all transactional tables
-      const tablesToDelete = [
-        "audit_logs",
-        "disputes",
-        "reviews",
-        "rental_requests",
-        "vehicle_images",
-        "vehicles",
-        "ride_requests",
-        "rides",
-        "carry_offers",
-        "carry_requests",
-        "notifications",
-      ] as const
+      // Execute secure server-side RPC with session verification
+      const { data, error } = await (supabase.rpc as any)("clean_slate_demo_reset", {
+        p_confirmation_token: "RESET",
+      })
 
-      for (const table of tablesToDelete) {
-        const { error } = await (supabase.from(table as any) as any)
-          .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000")
-
-        if (error) {
-          console.warn(`[AdminDashboard] Notice while clearing ${table}:`, error.message)
-        }
+      if (error) {
+        throw error
       }
 
-      // If user checked optional student verification reset
-      if (resetStudentsCheckbox) {
-        // Delete student_verifications excluding admin
-        await supabase
-          .from("student_verifications")
-          .delete()
-          .neq("user_id", currentAdminId)
-
-        // Reset verification status on non-admin profiles
-        await supabase
-          .from("profiles")
-          .update({ verification_status: "unverified" })
-          .neq("id", currentAdminId)
-          .neq("role", "admin")
-      }
-
-      toast.success("Platform state reset to clean slate successfully!")
+      console.log("[AdminDashboard] Clean slate reset result:", data)
+      toast.success("Platform demo data reset to clean slate successfully!")
       setIsResetDialogOpen(false)
       setResetConfirmationText("")
       setResetStudentsCheckbox(false)
@@ -853,24 +834,36 @@ export function AdminDashboardPage() {
               </p>
 
               <div className="p-3 rounded-lg bg-red-950/20 border border-red-900/30 text-[11px] font-mono text-red-300/90 space-y-1">
-                <div>// TARGETS 11 TRANSACTION TABLES</div>
+                <div>// SCOPED DEMO RECORD PURGE</div>
                 <div className="text-[10px] text-zinc-400">
-                  Preserves Admin account &amp; system configuration.
+                  Preserves real student profiles, ID documents, and audit logs.
                 </div>
               </div>
 
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => {
-                  setResetConfirmationText("")
-                  setIsResetDialogOpen(true)
-                }}
-                className="w-full text-xs font-mono h-9 bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer gap-2 border border-red-500/40"
-              >
-                <Trash2 className="size-3.5" />
-                <span>EXECUTE CLEAN SLATE RESET</span>
-              </Button>
+              {isProductionDeployment ? (
+                <div className="p-3 rounded-lg bg-zinc-900/80 border border-amber-500/30 text-amber-300 text-xs font-mono space-y-1.5">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-400">
+                    <ShieldAlert className="size-4 text-amber-400 shrink-0" />
+                    <span>[PRODUCTION PROTECTED]</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Clean-slate reset is permanently disabled in production to protect genuine student records, listings, and verification histories.
+                  </p>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => {
+                    setResetConfirmationText("")
+                    setIsResetDialogOpen(true)
+                  }}
+                  className="w-full text-xs font-mono h-9 bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer gap-2 border border-red-500/40"
+                >
+                  <Trash2 className="size-3.5" />
+                  <span>EXECUTE CLEAN SLATE RESET</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -975,7 +968,7 @@ export function AdminDashboardPage() {
       </Dialog>
 
       {/* CLEAN SLATE RESET CONFIRMATION MODAL */}
-      <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+      <Dialog open={!isProductionDeployment && isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
         <DialogContent className="bg-[#09090B] border-red-900/60 text-[#FAFAFA] max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-base font-mono uppercase tracking-wider text-red-500 flex items-center gap-2">
@@ -983,37 +976,22 @@ export function AdminDashboardPage() {
               <span>CONFIRM CLEAN-SLATE RESET</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-zinc-300">
-              This operation purges all active transactional test data across the platform.
+              This operation purges demo data across the platform via secure server-side RPC.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="p-3 rounded-lg bg-red-950/30 border border-red-900/40 text-xs text-red-200/90 space-y-1.5 font-mono">
-              <p className="font-bold text-red-400">IRREVERSIBLE ACTION:</p>
+              <p className="font-bold text-red-400">SCOPED DEMO PURGE:</p>
               <ul className="list-disc list-inside space-y-0.5 text-[11px] text-zinc-300">
-                <li>Deletes all vehicle listings &amp; rental requests</li>
-                <li>Deletes all carpool rides &amp; passenger bookings</li>
-                <li>Deletes all carry peer transport offers &amp; requests</li>
-                <li>Deletes all ratings, reviews, disputes, &amp; audit trails</li>
+                <li>Purges test vehicle listings &amp; test rental requests</li>
+                <li>Purges test carpool rides &amp; passenger bookings</li>
+                <li>Purges test carry transport offers &amp; requests</li>
+                <li><strong className="text-emerald-400">Preserves</strong> real student profiles &amp; ID verification submissions</li>
+                <li><strong className="text-emerald-400">Preserves</strong> complete system audit log history</li>
                 <li><strong className="text-emerald-400">Preserves</strong> your Admin profile &amp; login credentials</li>
               </ul>
             </div>
-
-            {/* Optional student reset checkbox */}
-            <label className="flex items-start gap-2.5 p-2.5 rounded-lg border border-[rgba(255,255,255,0.08)] bg-[#121215] cursor-pointer hover:bg-[#18181B] transition-colors">
-              <input
-                type="checkbox"
-                checked={resetStudentsCheckbox}
-                onChange={(e) => setResetStudentsCheckbox(e.target.checked)}
-                className="mt-0.5 rounded border-zinc-700 text-[#EA2E00] focus:ring-[#EA2E00]"
-              />
-              <div className="text-xs">
-                <span className="font-semibold text-zinc-200">Reset non-admin student verification statuses</span>
-                <p className="text-[11px] text-zinc-500">
-                  Reverts test student accounts back to unverified so they can test the ID onboarding flow again.
-                </p>
-              </div>
-            </label>
 
             <div className="space-y-1.5 pt-1">
               <Label htmlFor="confirm-reset-input" className="text-xs font-mono text-zinc-300">
@@ -1047,13 +1025,13 @@ export function AdminDashboardPage() {
               variant="destructive"
               size="sm"
               onClick={handleExecuteCleanSlateReset}
-              disabled={isExecutingReset || resetConfirmationText !== "RESET"}
+              disabled={isExecutingReset || resetConfirmationText !== "RESET" || isProductionDeployment}
               className="text-xs font-mono bg-red-600 hover:bg-red-700 text-white font-bold gap-1.5"
             >
               {isExecutingReset ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  <span>PURGING PLATFORM DATA...</span>
+                  <span>PURGING DEMO DATA...</span>
                 </>
               ) : (
                 <>

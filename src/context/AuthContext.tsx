@@ -69,66 +69,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [latestVerification, setLatestVerification] = React.useState<StudentVerification | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [adminAccessKeyVerified, setAdminAccessKeyVerified] = React.useState<boolean>(() => {
-    try {
-      return (
-        sessionStorage.getItem("zenway_admin_key_verified") === "true" ||
-        localStorage.getItem("zenway_admin_key_verified") === "true"
-      )
-    } catch {
-      return false
-    }
-  })
+  // Admin verification is verified against the database session, never trusted from localStorage
+  const [adminAccessKeyVerified, setAdminAccessKeyVerified] = React.useState<boolean>(false)
+  const inFlightFetchRef = React.useRef<Map<string, Promise<void>>>(new Map())
 
-  // Fetch student profile and latest verification submission
+  // Fetch student profile and latest verification submission with deduplication
   const fetchProfileAndVerification = React.useCallback(async (userId: string) => {
-    try {
-      // 1. Fetch Profile with explicit permitted columns (excludes phone_number to satisfy privacy restrictions)
-      const { data: profileData, error: profileErr } = await supabase
-        .from("profiles")
-        .select(
-          "id, full_name, university_name, avatar_url, bio, role, verification_status, registration_status, registration_rejection_reason, registration_reviewed_at, registration_reviewed_by, upi_id, created_at, updated_at"
-        )
-        .eq("id", userId)
-        .maybeSingle()
+    if (inFlightFetchRef.current.has(userId)) {
+      return inFlightFetchRef.current.get(userId)!
+    }
 
-      if (profileErr) {
-        console.error("[Auth] Error fetching profile:", profileErr)
-      } else if (profileData) {
-        // Enforce registration approval guard for restored non-admin sessions
-        const isUserAdmin = profileData.role === "admin"
-        const regStatus = (profileData as any).registration_status
+    const fetchPromise = (async () => {
+      try {
+        // 1. Fetch Profile with explicit permitted columns (excludes phone_number to satisfy privacy restrictions)
+        const { data: profileData, error: profileErr } = await supabase
+          .from("profiles")
+          .select(
+            "id, full_name, university_name, avatar_url, bio, role, verification_status, registration_status, registration_rejection_reason, registration_reviewed_at, registration_reviewed_by, upi_id, created_at, updated_at"
+          )
+          .eq("id", userId)
+          .maybeSingle()
 
-        if (!isUserAdmin && (regStatus === "pending" || regStatus === "rejected")) {
-          console.warn("[Auth] Active session blocked due to registration status:", regStatus)
-          await supabase.auth.signOut()
-          setUser(null)
-          setSession(null)
-          setProfile(null)
-          setLatestVerification(null)
-          return
+        if (profileErr) {
+          console.error("[Auth] Error fetching profile:", profileErr)
+        } else if (profileData) {
+          // Enforce registration approval guard for restored non-admin sessions
+          const isUserAdmin = profileData.role === "admin"
+          const regStatus = (profileData as any).registration_status
+
+          if (!isUserAdmin && (regStatus === "pending" || regStatus === "rejected")) {
+            console.warn("[Auth] Active session blocked due to registration status:", regStatus)
+            await supabase.auth.signOut()
+            setUser(null)
+            setSession(null)
+            setProfile(null)
+            setLatestVerification(null)
+            setAdminAccessKeyVerified(false)
+            return
+          }
+
+          setProfile(profileData as Profile)
+
+          // If user is administrator, authoritatively verify active session on backend
+          if (isUserAdmin) {
+            try {
+              const { data: hasSession } = await (supabase.rpc as any)("check_admin_session")
+              setAdminAccessKeyVerified(hasSession === true)
+            } catch {
+              setAdminAccessKeyVerified(false)
+            }
+          } else {
+            setAdminAccessKeyVerified(false)
+          }
         }
 
-        setProfile(profileData as Profile)
-      }
+        // 2. Fetch Latest Student Verification Submission
+        const { data: verificationData, error: verErr } = await supabase
+          .from("student_verifications")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
 
-      // 2. Fetch Latest Student Verification Submission
-      const { data: verificationData, error: verErr } = await supabase
-        .from("student_verifications")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (verErr) {
-        console.error("[Auth] Error fetching verification:", verErr)
-      } else {
-        setLatestVerification(verificationData ?? null)
+        if (verErr) {
+          console.error("[Auth] Error fetching verification:", verErr)
+        } else {
+          setLatestVerification(verificationData ?? null)
+        }
+      } catch (err) {
+        console.error("[Auth] Exception loading user data:", err)
+      } finally {
+        inFlightFetchRef.current.delete(userId)
       }
-    } catch (err) {
-      console.error("[Auth] Exception loading user data:", err)
-    }
+    })()
+
+    inFlightFetchRef.current.set(userId, fetchPromise)
+    return fetchPromise
   }, [])
 
   // Initial session restoration and auth state listener
@@ -148,6 +165,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             setSession(null)
             setUser(null)
+            setProfile(null)
+            setLatestVerification(null)
+            setAdminAccessKeyVerified(false)
           }
         }
       } catch (err) {
@@ -166,8 +186,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!isMounted) return
+
+      // Avoid duplicate fetch on initial hydration if already resolved
+      if (event === "INITIAL_SESSION") {
+        return
+      }
 
       if (newSession?.user) {
         setSession(newSession)
@@ -178,6 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null)
         setProfile(null)
         setLatestVerification(null)
+        setAdminAccessKeyVerified(false)
       }
       setIsLoading(false)
     })
@@ -322,7 +348,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       sessionStorage.removeItem("zenway_admin_key_verified")
       localStorage.removeItem("zenway_admin_key_verified")
-    } catch {}
+    } catch {
+      // Ignore storage errors in restricted contexts
+    }
     setAdminAccessKeyVerified(false)
     try {
       await supabase.auth.signOut()
@@ -337,120 +365,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Admin Access Key Verification via RPC (with graceful profile role check if migration 14 pending)
+  // Admin Access Key Verification via Server-Side RPC
   const verifyAdminAccessKey = React.useCallback(async (key: string): Promise<boolean> => {
     const trimmed = key.trim()
+    if (!trimmed) {
+      setAdminAccessKeyVerified(false)
+      return false
+    }
+
     try {
       const { data, error: rpcErr } = await (supabase.rpc as any)("verify_admin_access_key", {
         p_key: trimmed,
       })
 
-      if (!rpcErr) {
-        if (data === true) {
-          setAdminAccessKeyVerified(true)
-          try {
-            sessionStorage.setItem("zenway_admin_key_verified", "true")
-            localStorage.setItem("zenway_admin_key_verified", "true")
-          } catch {}
-          return true
-        }
-        return false
+      if (rpcErr) {
+        setAdminAccessKeyVerified(false)
+        throw rpcErr
       }
 
-      // Check if the RPC is not yet deployed to remote Supabase (schema cache error)
-      const isMissingRpc =
-        rpcErr.message?.includes("schema cache") ||
-        rpcErr.code === "PGRST202" ||
-        rpcErr.code === "42883"
-
-      if (isMissingRpc) {
-        console.warn("[Auth] verify_admin_access_key RPC not found on Supabase. Checking verified admin role in profiles table...")
-        const { data: { user: currentUser } } = await supabase.auth.getUser()
-        if (!currentUser) {
-          throw new Error("Administrator session not found. Please sign in again.")
-        }
-
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", currentUser.id)
-          .maybeSingle()
-
-        if (prof?.role !== "admin") {
-          throw new Error("Access Denied: This account does not possess campus administrator privileges.")
-        }
-
-        if (trimmed === "2077") {
-          console.info("[Auth] Admin authenticated via emergency key fallback (migration 14 pending remote deployment).")
-          setAdminAccessKeyVerified(true)
-          try {
-            sessionStorage.setItem("zenway_admin_key_verified", "true")
-            localStorage.setItem("zenway_admin_key_verified", "true")
-          } catch {}
-          return true
-        }
-
-        throw new Error("Invalid Admin Access Key. The default administrator security key is 2077.")
+      if (data === true) {
+        setAdminAccessKeyVerified(true)
+        return true
       }
 
-      throw rpcErr
+      setAdminAccessKeyVerified(false)
+      return false
     } catch (err: any) {
-      // If error is schema cache, check fallback before throwing
-      if (err?.message?.includes("schema cache") || err?.code === "PGRST202" || err?.code === "42883") {
-        const { data: { user: currentUser } } = await supabase.auth.getUser()
-        if (currentUser) {
-          const { data: prof } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", currentUser.id)
-            .maybeSingle()
-
-          if (prof?.role === "admin") {
-            if (trimmed === "2077") {
-              setAdminAccessKeyVerified(true)
-              try {
-                sessionStorage.setItem("zenway_admin_key_verified", "true")
-                localStorage.setItem("zenway_admin_key_verified", "true")
-              } catch {}
-              return true
-            }
-            throw new Error("Invalid Admin Access Key. The default administrator security key is 2077.")
-          }
-          throw new Error("Access Denied: Account lacks administrator privileges.")
-        }
-      }
+      setAdminAccessKeyVerified(false)
       console.error("[Auth] Admin access key verification error:", err)
       throw err
     }
   }, [])
 
-  // Admin Access Key Update via RPC
+  // Admin Access Key Update via Server-Side RPC (Enforces minimum 8 chars)
   const updateAdminAccessKey = React.useCallback(async (oldKey: string, newKey: string): Promise<boolean> => {
     try {
       const { data, error: rpcErr } = await (supabase.rpc as any)("update_admin_access_key", {
         p_old_key: oldKey.trim(),
         p_new_key: newKey.trim(),
       })
-      if (!rpcErr) return !!data
+      if (rpcErr) throw rpcErr
 
-      if (rpcErr.message?.includes("schema cache") || rpcErr.code === "PGRST202" || rpcErr.code === "42883") {
-        throw new Error("Admin key rotation requires migration 14 to be deployed on Supabase. Default emergency key is 2077.")
-      }
-      throw rpcErr
+      // Updating the access key invalidates existing admin sessions on the database; enforce re-authentication
+      setAdminAccessKeyVerified(false)
+      return !!data
     } catch (err: any) {
       console.error("[Auth] Admin key update error:", err)
       throw err
     }
   }, [])
 
-  // Admin Sign Out
+  // Admin Sign Out (Invalidates server session and resets client state)
   const adminSignOut = React.useCallback(async () => {
     try {
-      sessionStorage.removeItem("zenway_admin_key_verified")
-      localStorage.removeItem("zenway_admin_key_verified")
-    } catch {}
-    setAdminAccessKeyVerified(false)
-    await signOut()
+      await (supabase.rpc as any)("admin_sign_out")
+    } catch (err) {
+      console.warn("[Auth] admin_sign_out RPC warning:", err)
+    } finally {
+      try {
+        sessionStorage.removeItem("zenway_admin_key_verified")
+        localStorage.removeItem("zenway_admin_key_verified")
+      } catch {
+        // Ignore storage errors in restricted contexts
+      }
+      setAdminAccessKeyVerified(false)
+      await signOut()
+    }
   }, [signOut])
 
   // Forgot Password / Password Reset Request
@@ -574,7 +554,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null
     }
     return null
-  }, [session?.access_token])
+  }, [session])
 
   const jwtRole = jwtClaims?.user_role || (session?.user?.app_metadata as any)?.user_role || null
   const jwtRegistrationStatus = jwtClaims?.registration_status || (session?.user?.app_metadata as any)?.registration_status || null

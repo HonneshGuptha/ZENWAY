@@ -79,6 +79,7 @@ interface RentalRequestItem {
   total_price: number
   deposit_amount: number
   status: "pending" | "accepted" | "rejected" | "active" | "completed" | "cancelled"
+  payment_status?: "pending" | "reported_paid" | "settled" | "disputed" | null
   created_at: string
   vehicle?: {
     title: string
@@ -157,12 +158,54 @@ export function RentPage() {
 
   // UPI Payment Modal
   const [showUPI, setShowUPI] = React.useState(false)
-  const [upiPaymentData, setUpiPaymentData] = React.useState<{ amount: number; txId: string; payeeName?: string; payeeUpi?: string | null }>({
+  const [upiPaymentData, setUpiPaymentData] = React.useState<{
+    amount: number
+    txId: string
+    payeeName?: string
+    payeeUpi?: string | null
+    isPayer?: boolean
+  }>({
     amount: 0,
     txId: "",
     payeeName: "Student Peer",
     payeeUpi: null,
+    isPayer: false,
   })
+
+  // 3-Tier Payment Handlers
+  const handleReportPaymentSent = async (service: "rent", requestId: string, ref?: string) => {
+    try {
+      const { error } = await (supabase.rpc as any)("report_payment_sent", {
+        p_service: service,
+        p_request_id: requestId,
+        p_utr_reference: ref || null,
+      })
+      if (error) throw error
+      toast.success("Payment reported! Owner will confirm receipt upon vehicle handoff.")
+      await fetchUserRentals()
+    } catch (err: any) {
+      console.error("[RentPage] Report payment error:", err)
+      toast.error(err.message || "Failed to report payment.")
+    }
+  }
+
+  const handleConfirmSettlement = async (requestId: string) => {
+    try {
+      setActionLoadingId(requestId)
+      const { error } = await (supabase.rpc as any)("confirm_mutual_completion", {
+        p_service: "rent",
+        p_request_id: requestId,
+      })
+      if (error) throw error
+      toast.success("Payment verified and settled!")
+      await fetchUserRentals()
+    } catch (err: any) {
+      console.error("[RentPage] Confirm settlement error:", err)
+      toast.error(err.message || "Failed to confirm payment settlement.")
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
 
   // Fetch Available Vehicles
   const fetchVehicles = React.useCallback(async () => {
@@ -268,9 +311,11 @@ export function RentPage() {
     }
   }, [fetchVehicles, fetchUserRentals, user])
 
-  // Handle Listing Creation
+  // Handle Listing Creation with Explicit Image Upload Reliability & Cleanup
   const handleCreateListing = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmittingListing) return
+
     if (!user) {
       toast.error("Please sign in to list a vehicle.")
       return
@@ -282,6 +327,20 @@ export function RentPage() {
     if (!newTitle.trim() || !newLocation.trim()) {
       toast.error("Title and pickup location are required.")
       return
+    }
+
+    // Client-side image validation before network execution
+    if (imageFile) {
+      const allowedMimes = ["image/jpeg", "image/png", "image/webp"]
+      if (!allowedMimes.includes(imageFile.type)) {
+        toast.error("Invalid image format. Only JPG, PNG, and WEBP formats are accepted.")
+        return
+      }
+      const maxSizeBytes = 8 * 1024 * 1024 // 8 MB limit matching storage policy
+      if (imageFile.size > maxSizeBytes) {
+        toast.error("Vehicle image exceeds the 8 MB file size limit.")
+        return
+      }
     }
 
     try {
@@ -310,7 +369,7 @@ export function RentPage() {
 
       if (vErr) throw vErr
 
-      // 2. Upload image if provided
+      // 2. Upload image if provided with safe cleanup on failure
       if (imageFile && createdVehicle) {
         const ext = imageFile.name.split(".").pop() || "jpg"
         const storagePath = `${createdVehicle.id}/photo_${Date.now()}.${ext}`
@@ -322,12 +381,24 @@ export function RentPage() {
             upsert: true,
           })
 
-        if (!uploadErr) {
-          await supabase.from("vehicle_images").insert({
-            vehicle_id: createdVehicle.id,
-            image_path: storagePath,
-            is_primary: true,
-          })
+        if (uploadErr) {
+          // Explicit cleanup: Delete partially created vehicle record so an incomplete listing is never saved
+          console.error("[RentPage] Image upload failed, cleaning up orphan vehicle listing:", uploadErr)
+          await supabase.from("vehicles").delete().eq("id", createdVehicle.id)
+          throw new Error(`Failed to upload vehicle photo: ${uploadErr.message}. Listing creation was cancelled.`)
+        }
+
+        const { error: imgRecordErr } = await supabase.from("vehicle_images").insert({
+          vehicle_id: createdVehicle.id,
+          image_path: storagePath,
+          is_primary: true,
+        })
+
+        if (imgRecordErr) {
+          console.error("[RentPage] Image record insertion failed, cleaning up:", imgRecordErr)
+          await supabase.storage.from("vehicle-images").remove([storagePath])
+          await supabase.from("vehicles").delete().eq("id", createdVehicle.id)
+          throw new Error(`Failed to link vehicle photo: ${imgRecordErr.message}. Listing creation was cancelled.`)
         }
       }
 
@@ -351,9 +422,10 @@ export function RentPage() {
     }
   }
 
-  // Handle Booking Submit
+  // Handle Booking Submit with Server-Side Authoritative Price Integrity
   const handleConfirmBooking = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmittingBooking) return
     if (!user || !bookingVehicle) return
     if (!isVerified) {
       toast.error("Student ID verification required before reserving vehicles.")
@@ -366,6 +438,12 @@ export function RentPage() {
 
     const start = new Date(startDate)
     const end = new Date(endDate)
+
+    if (start.getTime() < Date.now() - 5 * 60 * 1000) {
+      toast.error("Rental start time cannot be in the past.")
+      return
+    }
+
     if (end <= start) {
       toast.error("End time must be after start time.")
       return
@@ -377,18 +455,38 @@ export function RentPage() {
 
     try {
       setIsSubmittingBooking(true)
-      const { error } = await supabase.from("rental_requests").insert({
-        vehicle_id: bookingVehicle.id,
-        renter_id: user.id,
-        owner_id: bookingVehicle.owner_id,
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        total_price: calculatedTotal,
-        deposit_amount: bookingVehicle.deposit_amount || 0,
-        status: "pending",
+
+      // 1. Authoritative server-side booking RPC
+      const { error: rpcErr } = await (supabase.rpc as any)("create_rental_booking", {
+        p_vehicle_id: bookingVehicle.id,
+        p_start_time: start.toISOString(),
+        p_end_time: end.toISOString(),
+        p_renter_notes: null,
       })
 
-      if (error) throw error
+      if (rpcErr) {
+        // Fallback to direct insert if RPC not yet deployed in remote schema cache
+        const isMissingRpc =
+          rpcErr.message?.includes("schema cache") ||
+          rpcErr.code === "PGRST202" ||
+          rpcErr.code === "42883"
+
+        if (isMissingRpc) {
+          const { error: insertErr } = await supabase.from("rental_requests").insert({
+            vehicle_id: bookingVehicle.id,
+            renter_id: user.id,
+            owner_id: bookingVehicle.owner_id,
+            start_time: start.toISOString(),
+            end_time: end.toISOString(),
+            total_price: calculatedTotal,
+            deposit_amount: bookingVehicle.deposit_amount || 0,
+            status: "pending",
+          })
+          if (insertErr) throw insertErr
+        } else {
+          throw rpcErr
+        }
+      }
 
       toast.success("Rental request submitted! Awaiting owner confirmation.")
       setBookingVehicle(null)

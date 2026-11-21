@@ -28,7 +28,7 @@ export function MascotLoader({
   message,
   className = "",
   fullscreen = true,
-  minDuration = 2200,
+  minDuration = 0,
   onMinDurationElapsed,
 }: MascotLoaderProps) {
   const [quoteIndex, setQuoteIndex] = React.useState(0)
@@ -45,6 +45,10 @@ export function MascotLoader({
 
   React.useEffect(() => {
     if (!onMinDurationElapsed) return
+    if (minDuration <= 0) {
+      onMinDurationElapsed()
+      return
+    }
     const timer = setTimeout(() => {
       onMinDurationElapsed()
     }, minDuration)
