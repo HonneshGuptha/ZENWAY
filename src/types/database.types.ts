@@ -39,6 +39,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      campus_localities: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          normalized_name: string
+          status: "pending" | "approved" | "rejected"
+          suggestion_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          normalized_name: string
+          status?: "pending" | "approved" | "rejected"
+          suggestion_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          normalized_name?: string
+          status?: "pending" | "approved" | "rejected"
+          suggestion_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_access_config: {
         Row: {
           access_key_hash: string
@@ -1105,6 +1135,12 @@ export type Database = {
       }
     }
     Functions: {
+      suggest_campus_locality: {
+        Args: {
+          p_name: string
+        }
+        Returns: Json
+      }
       accept_carry_offer: { Args: { p_offer_id: string }; Returns: undefined }
       accept_rental_request: {
         Args: { p_request_id: string }

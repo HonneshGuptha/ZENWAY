@@ -33,9 +33,21 @@ import {
   ShieldAlert,
   Trash2,
   Check,
+  MapPin,
 } from "lucide-react"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
+import { calculateBarWidth } from "@/constants/campus"
+
+interface CampusLocalityItem {
+  id: string
+  name: string
+  normalized_name: string
+  status: "pending" | "approved" | "rejected"
+  suggestion_count: number
+  created_at: string
+  updated_at: string
+}
 
 interface PlatformStats {
   total_users: number
@@ -100,6 +112,11 @@ export function AdminDashboardPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = React.useState(false)
   const [resetConfirmationText, setResetConfirmationText] = React.useState("")
   const [isExecutingReset, setIsExecutingReset] = React.useState(false)
+
+  // Campus Localities & Demand Graph State
+  const [localities, setLocalities] = React.useState<CampusLocalityItem[]>([])
+  const [isLoadingLocalities, setIsLoadingLocalities] = React.useState(false)
+  const [processingLocalityId, setProcessingLocalityId] = React.useState<string | null>(null)
 
   // Fetch pending verifications for quick queue
   const fetchPendingVerifications = React.useCallback(async () => {
@@ -217,6 +234,93 @@ export function AdminDashboardPage() {
     }
   }, [])
 
+  // Fetch Campus Localities for Demand Bar Graph
+  const fetchLocalities = React.useCallback(async () => {
+    try {
+      setIsLoadingLocalities(true)
+      const { data, error } = await supabase
+        .from("campus_localities")
+        .select("*")
+        .order("suggestion_count", { ascending: false })
+
+      if (error) {
+        console.warn("[AdminDashboard] Failed to fetch campus localities:", error.message)
+        return
+      }
+      setLocalities((data || []) as CampusLocalityItem[])
+    } catch (err) {
+      console.warn("[AdminDashboard] Localities fetch error:", err)
+    } finally {
+      setIsLoadingLocalities(false)
+    }
+  }, [])
+
+  // Approve Hub
+  const handleApproveLocality = async (locality: CampusLocalityItem) => {
+    try {
+      setProcessingLocalityId(locality.id)
+      const { error } = await supabase
+        .from("campus_localities")
+        .update({ status: "approved", updated_at: new Date().toISOString() })
+        .eq("id", locality.id)
+
+      if (error) throw error
+      toast.success(`Hub "${locality.name}" approved! It is now live in student quick-select chips.`)
+      setLocalities((prev) =>
+        prev.map((l) => (l.id === locality.id ? { ...l, status: "approved" } : l))
+      )
+    } catch (err: any) {
+      console.error("[AdminDashboard] Approve locality error:", err)
+      toast.error(err.message || "Failed to approve hub.")
+    } finally {
+      setProcessingLocalityId(null)
+    }
+  }
+
+  // Reject Hub
+  const handleRejectLocality = async (locality: CampusLocalityItem) => {
+    try {
+      setProcessingLocalityId(locality.id)
+      const { error } = await supabase
+        .from("campus_localities")
+        .update({ status: "rejected", updated_at: new Date().toISOString() })
+        .eq("id", locality.id)
+
+      if (error) throw error
+      toast.info(`Hub "${locality.name}" rejected.`)
+      setLocalities((prev) =>
+        prev.map((l) => (l.id === locality.id ? { ...l, status: "rejected" } : l))
+      )
+    } catch (err: any) {
+      console.error("[AdminDashboard] Reject locality error:", err)
+      toast.error(err.message || "Failed to reject hub.")
+    } finally {
+      setProcessingLocalityId(null)
+    }
+  }
+
+  // Move Back to Pending (Demote)
+  const handleUnapproveLocality = async (locality: CampusLocalityItem) => {
+    try {
+      setProcessingLocalityId(locality.id)
+      const { error } = await supabase
+        .from("campus_localities")
+        .update({ status: "pending", updated_at: new Date().toISOString() })
+        .eq("id", locality.id)
+
+      if (error) throw error
+      toast.info(`Hub "${locality.name}" moved back to pending.`)
+      setLocalities((prev) =>
+        prev.map((l) => (l.id === locality.id ? { ...l, status: "pending" } : l))
+      )
+    } catch (err: any) {
+      console.error("[AdminDashboard] Unapprove locality error:", err)
+      toast.error(err.message || "Failed to update hub.")
+    } finally {
+      setProcessingLocalityId(null)
+    }
+  }
+
   const fetchStats = React.useCallback(async () => {
     try {
       setIsLoading(true)
@@ -265,14 +369,14 @@ export function AdminDashboardPage() {
         open_carries: openCarries,
       })
 
-      await Promise.all([fetchPendingVerifications(), fetchLiveExchanges()])
+      await Promise.all([fetchPendingVerifications(), fetchLiveExchanges(), fetchLocalities()])
     } catch (err: any) {
       console.error("[AdminDashboard] Error fetching statistics:", err)
       toast.error(err.message || "Failed to load platform statistics")
     } finally {
       setIsLoading(false)
     }
-  }, [fetchPendingVerifications, fetchLiveExchanges])
+  }, [fetchPendingVerifications, fetchLiveExchanges, fetchLocalities])
 
   React.useEffect(() => {
     fetchStats()
@@ -467,6 +571,19 @@ export function AdminDashboardPage() {
     : 0
 
   const totalActiveExchanges = (stats?.active_rentals ?? 0) + (stats?.open_rides ?? 0) + (stats?.open_carries ?? 0)
+
+  // Hub Demand Bar Graph computations
+  const pendingHubs = localities
+    .filter((l) => l.status === "pending")
+    .sort((a, b) => b.suggestion_count - a.suggestion_count)
+
+  const approvedHubsList = localities
+    .filter((l) => l.status === "approved")
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  const maxPendingCount = pendingHubs.length > 0
+    ? Math.max(...pendingHubs.map((h) => h.suggestion_count))
+    : 1
 
   return (
     <AdminShell currentSection="dashboard">
@@ -692,6 +809,127 @@ export function AdminDashboardPage() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Hub Demand & Approvals Widget */}
+            <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#121215] p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] pb-3">
+                <div className="flex items-center gap-2">
+                  <MapPin className="size-4 text-[#EA2E00]" />
+                  <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-[#FAFAFA]">
+                    HUB DEMAND & APPROVALS
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isLoadingLocalities && <Loader2 className="size-3 animate-spin text-[#EA2E00]" />}
+                  <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800/80 px-2 py-0.5 rounded border border-zinc-700/60">
+                    {pendingHubs.length} PENDING TRIAGE
+                  </span>
+                </div>
+              </div>
+
+              {/* Pending Demand Bar Graph */}
+              {pendingHubs.length === 0 ? (
+                <div className="py-6 text-center border border-dashed border-[rgba(255,255,255,0.06)] rounded-lg">
+                  <CheckCircle2 className="size-7 text-[#10B981] mx-auto mb-1.5 opacity-80" />
+                  <p className="text-xs font-mono text-zinc-300">NO PENDING HUB SUGGESTIONS</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">All student suggested commute hubs have been triaged.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">
+                    Ranked by Student Commute Demand:
+                  </div>
+                  <div className="space-y-2.5">
+                    {pendingHubs.map((item) => {
+                      const barWidth = calculateBarWidth(item.suggestion_count, maxPendingCount)
+                      const isProcessing = processingLocalityId === item.id
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-3 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#18181B] space-y-2 hover:border-[rgba(255,255,255,0.12)] transition-colors"
+                        >
+                          <div className="flex items-center justify-between text-xs gap-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm text-[#FAFAFA] font-sans">
+                                {item.name}
+                              </span>
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700/80">
+                                {item.suggestion_count} {item.suggestion_count === 1 ? "request" : "requests"}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Button
+                                size="sm"
+                                disabled={isProcessing}
+                                onClick={() => handleApproveLocality(item)}
+                                className="h-7 text-[11px] font-mono bg-[#10B981] hover:bg-[#059669] text-black font-bold cursor-pointer gap-1"
+                              >
+                                {isProcessing ? (
+                                  <Loader2 className="size-3 animate-spin" />
+                                ) : (
+                                  <Check className="size-3" />
+                                )}
+                                <span>Approve</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isProcessing}
+                                onClick={() => handleRejectLocality(item)}
+                                className="h-7 text-[11px] font-mono border-red-950/60 bg-red-950/20 hover:bg-red-900/40 text-red-400 cursor-pointer gap-1"
+                              >
+                                <XCircle className="size-3" />
+                                <span>Reject</span>
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Horizontal Demand Bar Graph */}
+                          <div className="w-full bg-zinc-900 h-2.5 rounded-full overflow-hidden border border-zinc-800/80">
+                            <div
+                              className="bg-gradient-to-r from-[#EA2E00] to-[#FF5426] h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(234,46,0,0.4)]"
+                              style={{ width: `${barWidth}%` }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Approved Hubs Strip */}
+              <div className="pt-3 border-t border-[rgba(255,255,255,0.06)] space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono text-zinc-400">
+                  <div className="flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-[#10B981]" />
+                    <span>APPROVED COMMUTE HUBS ({approvedHubsList.length})</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-500 font-sans">Promoted live to student quick-select chips</span>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {approvedHubsList.map((hub) => (
+                    <span
+                      key={hub.id}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-sans bg-zinc-800/90 text-zinc-200 border border-zinc-700/80 hover:border-zinc-600 transition-colors"
+                    >
+                      <span className="size-1.5 rounded-full bg-[#10B981]" />
+                      <span>{hub.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleUnapproveLocality(hub)}
+                        title="Demote back to pending"
+                        className="text-zinc-500 hover:text-red-400 text-sm leading-none ml-0.5 cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Live Exchanges Telemetry Feed */}
