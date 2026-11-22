@@ -62,11 +62,11 @@ export function ContactPage() {
               </div>
               <div>
                 <span className="text-[10px] uppercase font-mono text-muted-foreground block">Campus Hub</span>
-                <span className="text-xs font-bold text-foreground">MSRUAS Transportation Desk</span>
+                <span className="text-xs font-bold text-foreground">Peenya Campus Desk</span>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              New BEL Road, MSR Nagar, Gnanagangothri Campus, Bengaluru, Karnataka 560054
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              470-P, Peenya Industrial Area 4th Phase, Peenya, Bengaluru – 560058, Karnataka
             </p>
           </Card>
 
@@ -77,7 +77,12 @@ export function ContactPage() {
               </div>
               <div>
                 <span className="text-[10px] uppercase font-mono text-muted-foreground block">Email Desk</span>
-                <span className="text-xs font-bold text-foreground">support@zenway.campus.edu</span>
+                <a
+                  href="mailto:zenway.campusmobility@gmail.com"
+                  className="text-xs font-bold text-foreground hover:underline block break-all"
+                >
+                  zenway.campusmobility@gmail.com
+                </a>
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
