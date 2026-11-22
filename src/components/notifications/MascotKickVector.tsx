@@ -1,143 +1,190 @@
 import * as React from "react"
-import { MASCOT_COLORS } from "@/components/ui/mascotConstants"
 
 export interface MascotKickVectorProps extends React.SVGProps<SVGSVGElement> {
-  pose?: "hover" | "kick"
+  pose?: "hover" | "kick" | "idle" | "windup"
   size?: number
   className?: string
 }
 
+const OUTLINE = "#1A1A1A"
+const WHITE = "#FFFFFF"
+const PINK_CHEEK = "#F9B8B8"
+const VERMILION = "#E2462A"
+const STROKE_WIDTH = 5.5
+
 /**
- * Dedicated vector mascot for the ZENWAY notification interaction.
- * Flat 2D vector style strictly adhering to ZENWAY brand system:
- * - #FFFFFF dog body
- * - #141413 crisp vector strokes (2.5px, round joins)
- * - #EA2E00 (Signal Vermilion) helmet
- * - #9DBDB8 (Muted Sage) backpack
- * - #FAF6EE cream accents
- * - Fully isolated: does NOT touch or modify base ZenwayMascot / EntryIntro / MascotLoader.
+ * MascotKickVector:
+ * Clean, official 2D flat ZENWAY white dog mascot artwork for notification interactions.
+ * - Pure #FFFFFF round dog body & head (strictly NO helmet, NO backpack, NO straps)
+ * - Thick #1A1A1A charcoal outline (stroke-width 5.5, round caps and joins)
+ * - Floppy rounded ears, dark eyes, small oval nose, happy smile, soft pink cheeks (#F9B8B8)
+ * - Two distinct poses:
+ *   1. "hover" / "idle": Perched happily on the notification card edge with one waving paw
+ *   2. "kick" / "windup": Dynamic karate flying-kick with determined > < eyes, vermilion speed lines & sparkle burst
  */
 export function MascotKickVector({
   pose = "hover",
-  size = 64,
+  size = 56,
   className = "",
   ...props
 }: MascotKickVectorProps) {
-  if (pose === "kick") {
-    // Dynamic Karate Flying-Kick / Dash-Kick pose striking rightward
+  const isKickPose = pose === "kick" || pose === "windup"
+
+  if (isKickPose) {
+    // Dynamic Karate Flying-Kick / Dash-Kick striking rightward
     return (
       <svg
-        viewBox="0 0 100 80"
-        width={size * 1.25}
-        height={size}
+        viewBox="0 0 140 100"
+        width={Math.round(size * 1.35)}
+        height={Math.round(size * 0.96)}
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className={`select-none overflow-visible ${className}`}
         aria-hidden="true"
         {...props}
       >
-        {/* Dash speed lines */}
-        <g stroke={MASCOT_COLORS.vermilion} strokeWidth="2" strokeLinecap="round" opacity="0.8">
-          <line x1="5" y1="36" x2="22" y2="36" />
-          <line x1="10" y1="44" x2="25" y2="44" />
-          <line x1="2" y1="52" x2="18" y2="52" />
+        {/* Subtle ground drop-shadow for kick */}
+        <ellipse cx="68" cy="94" rx="36" ry="4" fill={OUTLINE} fillOpacity="0.1" />
+
+        {/* Signal Vermilion Speed Lines trailing behind */}
+        <g stroke={VERMILION} strokeWidth="3.5" strokeLinecap="round" opacity="0.85">
+          <line x1="6" y1="42" x2="26" y2="42" />
+          <line x1="12" y1="52" x2="34" y2="52" />
+          <line x1="4" y1="62" x2="22" y2="62" />
         </g>
 
-        {/* Tail trailing back */}
+        {/* Playful wagging tail sweeping back */}
         <path
-          d="M20 48c-6-4-10-2-12 4"
-          stroke={MASCOT_COLORS.outline}
-          strokeWidth="2.5"
+          d="M 32 64 C 20 66, 14 54, 18 46"
+          stroke={OUTLINE}
+          strokeWidth={STROKE_WIDTH}
           strokeLinecap="round"
         />
 
-        {/* Muted Sage Backpack */}
-        <rect
-          x="24"
-          y="32"
-          width="12"
-          height="16"
-          rx="3"
-          fill={MASCOT_COLORS.sage}
-          stroke={MASCOT_COLORS.outline}
-          strokeWidth="2"
+        {/* Tucked Back Leg */}
+        <path
+          d="M 44 64 C 38 72, 42 82, 52 82 C 58 82, 60 74, 56 66 Z"
+          fill={WHITE}
+          stroke={OUTLINE}
+          strokeWidth={STROKE_WIDTH}
+          strokeLinejoin="round"
+          strokeLinecap="round"
         />
 
-        {/* Main Body (Angled forward into the kick) */}
+        {/* White Rounded Dog Torso (Leaning forward into the flying kick) */}
         <path
-          d="M32 38c0-8 8-14 18-14h12c8 0 14 6 14 14l-4 12H34l-2-12z"
-          fill={MASCOT_COLORS.white}
-          stroke={MASCOT_COLORS.outline}
-          strokeWidth="2.5"
+          d="M 38 48 C 36 34, 52 28, 68 32 C 80 36, 86 50, 82 64 C 78 72, 50 72, 40 64 Z"
+          fill={WHITE}
+          stroke={OUTLINE}
+          strokeWidth={STROKE_WIDTH}
           strokeLinejoin="round"
         />
 
-        {/* Back Leg (Tucked up) */}
-        <path
-          d="M36 50c-2 6-1 10 4 10s6-4 4-10"
-          fill={MASCOT_COLORS.white}
-          stroke={MASCOT_COLORS.outline}
-          strokeWidth="2.5"
-          strokeLinejoin="round"
-        />
-
-        {/* Front Kick Leg (Extended straight forward to strike the card) */}
-        <g id="kick-leg">
+        {/* Extended Front Kick Leg striking rightward */}
+        <g id="kick-extended-leg">
           <path
-            d="M58 46l24-2c3 0 6 2 6 6s-3 6-6 6l-22-2"
-            fill={MASCOT_COLORS.white}
-            stroke={MASCOT_COLORS.outline}
-            strokeWidth="2.5"
-            strokeLinecap="round"
+            d="M 76 54 L 110 50 C 116 50, 118 56, 114 62 C 110 66, 102 66, 78 64 Z"
+            fill={WHITE}
+            stroke={OUTLINE}
+            strokeWidth={STROKE_WIDTH}
             strokeLinejoin="round"
+            strokeLinecap="round"
           />
-          {/* Paw pad impact detail */}
-          <circle cx="85" cy="50" r="3" fill={MASCOT_COLORS.vermilion} />
+          {/* Rounded Kick Paw Foot */}
+          <ellipse
+            cx="112"
+            cy="56"
+            rx="6.5"
+            ry="5.5"
+            fill={WHITE}
+            stroke={OUTLINE}
+            strokeWidth={STROKE_WIDTH}
+          />
+          {/* Subtle vermilion paw pad accent */}
+          <circle cx="112" cy="56" r="2.8" fill={VERMILION} />
         </g>
 
-        {/* Vermilion Helmet */}
+        {/* Front Arms / Paws in playful Karate Guard Position */}
         <path
-          d="M48 18c0-10 8-16 18-16s18 6 18 16c0 3-1 6-4 8l-28-1c-3-2-4-4-4-7z"
-          fill={MASCOT_COLORS.vermilion}
-          stroke={MASCOT_COLORS.outline}
-          strokeWidth="2.5"
+          d="M 64 46 C 72 42, 80 44, 82 50 C 82 56, 74 56, 68 52"
+          fill={WHITE}
+          stroke={OUTLINE}
+          strokeWidth={STROKE_WIDTH}
+          strokeLinecap="round"
           strokeLinejoin="round"
         />
-        {/* Visor & Aerodynamic Fin */}
-        <path
-          d="M72 14c4 0 7 2 9 5l-12 3c-1-4 1-8 3-8z"
-          fill={MASCOT_COLORS.cream}
-          stroke={MASCOT_COLORS.outline}
-          strokeWidth="1.5"
+
+        {/* White Round Head tilted forward */}
+        <ellipse
+          cx="72"
+          cy="32"
+          rx="21"
+          ry="19"
+          fill={WHITE}
+          stroke={OUTLINE}
+          strokeWidth={STROKE_WIDTH}
         />
 
-        {/* Determined Dog Face & Snout */}
+        {/* Floppy Rounded Ears swept back by dash momentum */}
+        {/* Left Ear */}
         <path
-          d="M62 20c0 4 3 8 7 8h5c4 0 7-4 7-8"
-          fill={MASCOT_COLORS.white}
-          stroke={MASCOT_COLORS.outline}
-          strokeWidth="2"
+          d="M 54 22 C 40 20, 34 32, 42 40 C 48 44, 56 36, 56 28 Z"
+          fill={WHITE}
+          stroke={OUTLINE}
+          strokeWidth={STROKE_WIDTH}
+          strokeLinejoin="round"
         />
-        {/* Confident eye & nose */}
-        <circle cx="71" cy="22" r="2" fill={MASCOT_COLORS.outline} />
-        <ellipse cx="78" cy="23" rx="2" ry="1.5" fill={MASCOT_COLORS.outline} />
-
-        {/* Front Paws in Karate Guard Position */}
+        {/* Right Ear */}
         <path
-          d="M52 38c4-4 8-2 10 2s0 8-4 8"
-          fill={MASCOT_COLORS.white}
-          stroke={MASCOT_COLORS.outline}
-          strokeWidth="2.2"
+          d="M 88 18 C 98 16, 104 26, 98 34 C 94 38, 86 36, 84 26 Z"
+          fill={WHITE}
+          stroke={OUTLINE}
+          strokeWidth={STROKE_WIDTH}
+          strokeLinejoin="round"
+        />
+
+        {/* Soft Pink Cheeks */}
+        <circle cx="58" cy="37" r="4" fill={PINK_CHEEK} />
+        <circle cx="86" cy="37" r="4" fill={PINK_CHEEK} />
+
+        {/* Determined & Excited Eyes (> < karate focus) */}
+        <g stroke={OUTLINE} strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
+          {/* Left Eye > */}
+          <path d="M 62 27 L 68 31 L 62 35" />
+          {/* Right Eye < */}
+          <path d="M 82 27 L 76 31 L 82 35" />
+        </g>
+
+        {/* Small Oval Nose */}
+        <ellipse cx="72" cy="34" rx="3.2" ry="2.2" fill={OUTLINE} />
+
+        {/* Confident Smile */}
+        <path
+          d="M 68 39 Q 72 43 76 39"
+          stroke={OUTLINE}
+          strokeWidth="3.5"
           strokeLinecap="round"
         />
+
+        {/* Impact Sparkle Burst at Kick Point */}
+        <g transform="translate(122, 48)">
+          <path
+            d="M 6 0 L 8 6 L 14 8 L 8 10 L 6 16 L 4 10 L -2 8 L 4 6 Z"
+            fill={VERMILION}
+          />
+          {/* Radiating impact lines */}
+          <line x1="8" y1="-4" x2="12" y2="-8" stroke={VERMILION} strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="16" y1="4" x2="21" y2="3" stroke={VERMILION} strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="13" y1="14" x2="18" y2="18" stroke={VERMILION} strokeWidth="2.5" strokeLinecap="round" />
+        </g>
       </svg>
     )
   }
 
-  // Hovering / Dropping down alert pose
+  // IDLE / PERCHED POSE: White dog mascot perched happily on top of notification card
   return (
     <svg
-      viewBox="0 0 80 80"
+      viewBox="0 0 120 120"
       width={size}
       height={size}
       fill="none"
@@ -146,81 +193,118 @@ export function MascotKickVector({
       aria-hidden="true"
       {...props}
     >
-      {/* Muted Sage Backpack on Back */}
-      <rect
-        x="18"
-        y="30"
-        width="12"
-        height="18"
-        rx="3"
-        fill={MASCOT_COLORS.sage}
-        stroke={MASCOT_COLORS.outline}
-        strokeWidth="2.2"
-      />
+      {/* Contact base shadow */}
+      <ellipse cx="60" cy="114" rx="34" ry="4" fill={OUTLINE} fillOpacity="0.12" />
 
-      {/* Dog Body (Standing/Floating down) */}
+      {/* Cute Wagging Tail */}
       <path
-        d="M26 34c0-8 6-14 14-14h8c8 0 14 6 14 14v18c0 4-4 8-8 8H34c-4 0-8-4-8-8V34z"
-        fill={MASCOT_COLORS.white}
-        stroke={MASCOT_COLORS.outline}
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-      />
-
-      {/* Cute Alert Tail */}
-      <path
-        d="M26 48c-6-4-10-1-12 5"
-        stroke={MASCOT_COLORS.outline}
-        strokeWidth="2.5"
+        d="M 38 92 C 26 90, 20 80, 24 72"
+        stroke={OUTLINE}
+        strokeWidth={STROKE_WIDTH}
         strokeLinecap="round"
       />
 
-      {/* Vermilion Helmet */}
+      {/* Floppy Left Ear */}
       <path
-        d="M30 18c0-10 8-16 18-16s18 6 18 16c0 3-1 6-4 8H34c-3-2-4-5-4-8z"
-        fill={MASCOT_COLORS.vermilion}
-        stroke={MASCOT_COLORS.outline}
-        strokeWidth="2.5"
+        d="M 38 34 C 24 38, 22 58, 30 68 C 36 74, 44 68, 42 54 Z"
+        fill={WHITE}
+        stroke={OUTLINE}
+        strokeWidth={STROKE_WIDTH}
         strokeLinejoin="round"
       />
-      {/* Helmet Visor */}
+
+      {/* Floppy Right Ear */}
       <path
-        d="M48 12c5 0 9 2 11 6l-14 2c-1-5 1-8 3-8z"
-        fill={MASCOT_COLORS.cream}
-        stroke={MASCOT_COLORS.outline}
-        strokeWidth="1.5"
+        d="M 82 34 C 96 38, 98 58, 90 68 C 84 74, 76 68, 78 54 Z"
+        fill={WHITE}
+        stroke={OUTLINE}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinejoin="round"
       />
 
-      {/* Friendly Eyes */}
-      <circle cx="44" cy="24" r="2.2" fill={MASCOT_COLORS.outline} />
-      <circle cx="56" cy="24" r="2.2" fill={MASCOT_COLORS.outline} />
-
-      {/* Dog Snout & Nose */}
+      {/* Plump White Dog Torso / Body */}
       <path
-        d="M47 28c0-1 2-2 3-2s3 1 3 2c0 2-3 3-3 3s-3-1-3-3z"
-        fill={MASCOT_COLORS.outline}
+        d="M 40 64 C 34 76, 36 96, 42 102 C 48 106, 72 106, 78 102 C 84 96, 86 76, 80 64 Z"
+        fill={WHITE}
+        stroke={OUTLINE}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinejoin="round"
       />
 
-      {/* Front Paws Rested on Edge */}
-      <rect
-        x="34"
-        y="56"
-        width="8"
-        height="12"
-        rx="4"
-        fill={MASCOT_COLORS.white}
-        stroke={MASCOT_COLORS.outline}
-        strokeWidth="2.2"
+      {/* Two Small Rounded Feet / Paws resting on card edge */}
+      <ellipse
+        cx="48"
+        cy="106"
+        rx="7.5"
+        ry="5"
+        fill={WHITE}
+        stroke={OUTLINE}
+        strokeWidth={STROKE_WIDTH}
       />
-      <rect
-        x="46"
-        y="56"
-        width="8"
-        height="12"
-        rx="4"
-        fill={MASCOT_COLORS.white}
-        stroke={MASCOT_COLORS.outline}
-        strokeWidth="2.2"
+      <ellipse
+        cx="72"
+        cy="106"
+        rx="7.5"
+        ry="5"
+        fill={WHITE}
+        stroke={OUTLINE}
+        strokeWidth={STROKE_WIDTH}
+      />
+
+      {/* Left Front Paw resting on card */}
+      <path
+        d="M 40 76 C 34 82, 38 92, 46 90"
+        fill={WHITE}
+        stroke={OUTLINE}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Right Front Paw raised waving hello */}
+      <path
+        d="M 76 74 C 84 70, 94 60, 92 50 C 88 46, 80 52, 76 62"
+        fill={WHITE}
+        stroke={OUTLINE}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="89" cy="51" r="3.5" fill={WHITE} stroke={OUTLINE} strokeWidth={STROKE_WIDTH} />
+
+      {/* White Round Dog Head */}
+      <circle
+        cx="60"
+        cy="46"
+        r="23"
+        fill={WHITE}
+        stroke={OUTLINE}
+        strokeWidth={STROKE_WIDTH}
+      />
+
+      {/* Soft Pink Cheeks */}
+      <circle cx="43" cy="53" r="4.5" fill={PINK_CHEEK} />
+      <circle cx="77" cy="53" r="4.5" fill={PINK_CHEEK} />
+
+      {/* Dark Round Eyes with Sparkle Catchlight */}
+      {/* Left Eye */}
+      <circle cx="50" cy="45" r="3.6" fill={OUTLINE} />
+      <circle cx="49" cy="43.5" r="1.3" fill={WHITE} />
+
+      {/* Right Eye */}
+      <circle cx="70" cy="45" r="3.6" fill={OUTLINE} />
+      <circle cx="69" cy="43.5" r="1.3" fill={WHITE} />
+
+      {/* Cute Small Oval Nose */}
+      <ellipse cx="60" cy="51" rx="3.5" ry="2.4" fill={OUTLINE} />
+
+      {/* Happy Smile */}
+      <path
+        d="M 54 55 Q 57 59 60 56 Q 63 59 66 55"
+        stroke={OUTLINE}
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   )
