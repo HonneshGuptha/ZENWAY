@@ -126,236 +126,244 @@ function App() {
   // Render dedicated Admin portal routes outside the student AppShell
   if (isAdminPath) {
     return (
-      <RouteGuard>
-        <React.Suspense fallback={<PageLoadingFallback />}>
-          <AnimatePresence mode="wait">
-            {currentPath === "/admin/login" && (
-              <motion.div key="admin-login" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                <AdminLoginPage />
-              </motion.div>
-            )}
+      <>
+        <RouteGuard>
+          <React.Suspense fallback={<PageLoadingFallback />}>
+            <AnimatePresence mode="wait">
+              {currentPath === "/admin/login" && (
+                <motion.div key="admin-login" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                  <AdminLoginPage />
+                </motion.div>
+              )}
 
-            {currentPath === "/admin/dashboard" && (
-              <motion.div key="admin-dashboard" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                <AdminDashboardPage />
-              </motion.div>
-            )}
+              {currentPath === "/admin/dashboard" && (
+                <motion.div key="admin-dashboard" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                  <AdminDashboardPage />
+                </motion.div>
+              )}
 
-            {currentPath === "/admin/registrations" && (
-              <motion.div key="admin-registrations" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                <AdminRegistrationsPage />
-              </motion.div>
-            )}
+              {currentPath === "/admin/registrations" && (
+                <motion.div key="admin-registrations" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                  <AdminRegistrationsPage />
+                </motion.div>
+              )}
 
-            {currentPath === "/admin/verifications" && (
-              <motion.div key="admin-verifications" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                <AdminVerificationsPage />
-              </motion.div>
-            )}
+              {currentPath === "/admin/verifications" && (
+                <motion.div key="admin-verifications" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                  <AdminVerificationsPage />
+                </motion.div>
+              )}
 
-            {currentPath === "/admin/users" && (
-              <motion.div key="admin-users" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                <AdminUsersPage />
-              </motion.div>
-            )}
+              {currentPath === "/admin/users" && (
+                <motion.div key="admin-users" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                  <AdminUsersPage />
+                </motion.div>
+              )}
 
-            {currentPath === "/admin/moderation" && (
-              <motion.div key="admin-moderation" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                <AdminModerationPage />
-              </motion.div>
-            )}
+              {currentPath === "/admin/moderation" && (
+                <motion.div key="admin-moderation" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                  <AdminModerationPage />
+                </motion.div>
+              )}
 
-            {currentPath === "/admin/disputes" && (
-              <motion.div key="admin-disputes" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                <AdminDisputesPage />
-              </motion.div>
-            )}
+              {currentPath === "/admin/disputes" && (
+                <motion.div key="admin-disputes" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                  <AdminDisputesPage />
+                </motion.div>
+              )}
 
-            {currentPath === "/admin/reports" && (
-              <motion.div key="admin-reports" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                <AdminReportsPage />
-              </motion.div>
-            )}
+              {currentPath === "/admin/reports" && (
+                <motion.div key="admin-reports" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                  <AdminReportsPage />
+                </motion.div>
+              )}
 
-            {currentPath === "/admin" && (
-              <motion.div key="admin-root" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                <AdminDashboardPage />
-              </motion.div>
-            )}
+              {currentPath === "/admin" && (
+                <motion.div key="admin-root" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                  <AdminDashboardPage />
+                </motion.div>
+              )}
 
-            {!isKnownAdminPath && currentPath !== "/admin" && (
-              <motion.div key="admin-not-found" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                <NotFoundPage />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </React.Suspense>
-      </RouteGuard>
+              {!isKnownAdminPath && currentPath !== "/admin" && (
+                <motion.div key="admin-not-found" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                  <NotFoundPage />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </React.Suspense>
+        </RouteGuard>
+        <MascotNotificationToast />
+      </>
     )
   }
 
   // Render dedicated Full-Screen Authentication routes outside the student AppShell
   if (isAuthPath) {
     return (
-      <RouteGuard>
-        <div className="min-h-screen bg-background text-foreground flex flex-col font-sans transition-colors duration-200">
-          <header className="w-full border-b border-border/60 bg-background/85 backdrop-blur-md sticky top-0 z-40">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => onTabChange("home")}
-                className="group flex cursor-pointer items-center rounded-lg py-1 pr-2 outline-none focus-visible:ring-2 focus-visible:ring-ring text-left"
-                aria-label="ZENWAY Campus Mobility Home"
-              >
-                <ZenwayLogo size="md" withBadge={true} className="transition-transform duration-200 group-hover:scale-[1.02]" />
-              </button>
-              <div className="flex items-center gap-2">
-                <ThemeToggle />
+      <>
+        <RouteGuard>
+          <div className="min-h-screen bg-background text-foreground flex flex-col font-sans transition-colors duration-200">
+            <header className="w-full border-b border-border/60 bg-background/85 backdrop-blur-md sticky top-0 z-40">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => onTabChange("home")}
+                  className="group flex cursor-pointer items-center rounded-lg py-1 pr-2 outline-none focus-visible:ring-2 focus-visible:ring-ring text-left"
+                  aria-label="ZENWAY Campus Mobility Home"
+                >
+                  <ZenwayLogo size="md" withBadge={true} className="transition-transform duration-200 group-hover:scale-[1.02]" />
+                </button>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle />
+                </div>
               </div>
-            </div>
-          </header>
+            </header>
 
-          <main className="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-            <React.Suspense fallback={<PageLoadingFallback />}>
-              <AnimatePresence mode="wait">
-                {currentPath === "/login" && (
-                  <motion.div key="login" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                    <LoginPage />
-                  </motion.div>
-                )}
+            <main className="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+              <React.Suspense fallback={<PageLoadingFallback />}>
+                <AnimatePresence mode="wait">
+                  {currentPath === "/login" && (
+                    <motion.div key="login" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                      <LoginPage />
+                    </motion.div>
+                  )}
 
-                {currentPath === "/register" && (
-                  <motion.div key="register" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                    <RegisterPage />
-                  </motion.div>
-                )}
+                  {currentPath === "/register" && (
+                    <motion.div key="register" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                      <RegisterPage />
+                    </motion.div>
+                  )}
 
-                {currentPath === "/forgot-password" && (
-                  <motion.div key="forgot-password" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                    <ForgotPasswordPage />
-                  </motion.div>
-                )}
+                  {currentPath === "/forgot-password" && (
+                    <motion.div key="forgot-password" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                      <ForgotPasswordPage />
+                    </motion.div>
+                  )}
 
-                {currentPath === "/auth/callback" && (
-                  <motion.div key="auth-callback" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                    <AuthCallbackPage />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </React.Suspense>
-          </main>
-        </div>
-      </RouteGuard>
+                  {currentPath === "/auth/callback" && (
+                    <motion.div key="auth-callback" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                      <AuthCallbackPage />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </React.Suspense>
+            </main>
+          </div>
+        </RouteGuard>
+        <MascotNotificationToast />
+      </>
     )
   }
 
   // Student Application Routes with AppShell
   return (
-    <RouteGuard>
-      <AppShell currentTab={currentTab} onTabChange={onTabChange}>
-        <div className="w-full">
-          <React.Suspense fallback={<PageLoadingFallback />}>
-            <AnimatePresence mode="wait">
-              {/* 1. ONBOARDING ROUTES */}
-              {currentPath === "/verify-student" && (
-                <motion.div key="verify-student" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <VerifyStudentPage />
-                </motion.div>
-              )}
+    <>
+      <RouteGuard>
+        <AppShell currentTab={currentTab} onTabChange={onTabChange}>
+          <div className="w-full">
+            <React.Suspense fallback={<PageLoadingFallback />}>
+              <AnimatePresence mode="wait">
+                {/* 1. ONBOARDING ROUTES */}
+                {currentPath === "/verify-student" && (
+                  <motion.div key="verify-student" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <VerifyStudentPage />
+                  </motion.div>
+                )}
 
-              {currentPath === "/verification-status" && (
-                <motion.div key="verification-status" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <VerificationStatusPage />
-                </motion.div>
-              )}
+                {currentPath === "/verification-status" && (
+                  <motion.div key="verification-status" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <VerificationStatusPage />
+                  </motion.div>
+                )}
 
-              {/* 3. PROFILE ROUTE */}
-              {(currentPath === "/profile" || currentTab === "profile") && (
-                <motion.div key="profile" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <StudentProfilePage />
-                </motion.div>
-              )}
+                {/* 3. PROFILE ROUTE */}
+                {(currentPath === "/profile" || currentTab === "profile") && (
+                  <motion.div key="profile" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <StudentProfilePage />
+                  </motion.div>
+                )}
 
-              {/* 4. HOME ROUTE: Authenticated Hub for Students, Marketing Landing for Guests */}
-              {currentPath === "/" && currentTab === "home" && (
-                <motion.div
-                  key={user ? "authenticated-home" : "guest-home"}
-                  variants={pageTransitionVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                >
-                  {user ? (
-                    <AuthenticatedHome onNavigate={onTabChange} />
-                  ) : (
-                    <HomeLanding onNavigate={onTabChange} />
-                  )}
-                </motion.div>
-              )}
+                {/* 4. HOME ROUTE: Authenticated Hub for Students, Marketing Landing for Guests */}
+                {currentPath === "/" && currentTab === "home" && (
+                  <motion.div
+                    key={user ? "authenticated-home" : "guest-home"}
+                    variants={pageTransitionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                  >
+                    {user ? (
+                      <AuthenticatedHome onNavigate={onTabChange} />
+                    ) : (
+                      <HomeLanding onNavigate={onTabChange} />
+                    )}
+                  </motion.div>
+                )}
 
-              {/* 5. EXCHANGE SERVICE ROUTES */}
-              {(currentPath === "/rent" || currentTab === "rent") && (
-                <motion.div key="rent" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <RentPage />
-                </motion.div>
-              )}
+                {/* 5. EXCHANGE SERVICE ROUTES */}
+                {(currentPath === "/rent" || currentTab === "rent") && (
+                  <motion.div key="rent" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <RentPage />
+                  </motion.div>
+                )}
 
-              {(currentPath === "/ride" || currentTab === "ride") && (
-                <motion.div key="ride" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <RidePage />
-                </motion.div>
-              )}
+                {(currentPath === "/ride" || currentTab === "ride") && (
+                  <motion.div key="ride" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <RidePage />
+                  </motion.div>
+                )}
 
-              {(currentPath === "/carry" || currentTab === "carry") && (
-                <motion.div key="carry" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <CarryPage />
-                </motion.div>
-              )}
+                {(currentPath === "/carry" || currentTab === "carry") && (
+                  <motion.div key="carry" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <CarryPage />
+                  </motion.div>
+                )}
 
-              {/* 6. UNIFIED ACTIVITY ROUTE */}
-              {(currentPath === "/activity" || currentTab === "activity") && (
-                <motion.div key="activity" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <ActivityPage />
-                </motion.div>
-              )}
+                {/* 6. UNIFIED ACTIVITY ROUTE */}
+                {(currentPath === "/activity" || currentTab === "activity") && (
+                  <motion.div key="activity" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <ActivityPage />
+                  </motion.div>
+                )}
 
-              {/* 7. SUPPORT & LEGAL ROUTES */}
-              {currentPath === "/terms" && (
-                <motion.div key="terms" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <TermsPage />
-                </motion.div>
-              )}
+                {/* 7. SUPPORT & LEGAL ROUTES */}
+                {currentPath === "/terms" && (
+                  <motion.div key="terms" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <TermsPage />
+                  </motion.div>
+                )}
 
-              {currentPath === "/privacy" && (
-                <motion.div key="privacy" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <PrivacyPage />
-                </motion.div>
-              )}
+                {currentPath === "/privacy" && (
+                  <motion.div key="privacy" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <PrivacyPage />
+                  </motion.div>
+                )}
 
-              {currentPath === "/help" && (
-                <motion.div key="help" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <HelpPage />
-                </motion.div>
-              )}
+                {currentPath === "/help" && (
+                  <motion.div key="help" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <HelpPage />
+                  </motion.div>
+                )}
 
-              {currentPath === "/contact" && (
-                <motion.div key="contact" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <ContactPage />
-                </motion.div>
-              )}
+                {currentPath === "/contact" && (
+                  <motion.div key="contact" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <ContactPage />
+                  </motion.div>
+                )}
 
-              {/* 8. 404 NOT FOUND FALLBACK */}
-              {!isKnownStudentPath && (
-                <motion.div key="not-found" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
-                  <NotFoundPage />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </React.Suspense>
-        </div>
-      </AppShell>
+                {/* 8. 404 NOT FOUND FALLBACK */}
+                {!isKnownStudentPath && (
+                  <motion.div key="not-found" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit">
+                    <NotFoundPage />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </React.Suspense>
+          </div>
+        </AppShell>
+      </RouteGuard>
       <MascotNotificationToast />
-    </RouteGuard>
+    </>
   )
 }
 

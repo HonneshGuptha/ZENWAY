@@ -13,11 +13,24 @@ import {
   X,
   ArrowRight,
   Sparkles,
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  CheckCircle2,
 } from "lucide-react"
 
 function getServiceIcon(type?: string) {
   if (!type) return <Bell className="size-4 text-primary" />
   const lower = type.toLowerCase()
+  if (lower.includes("error") || lower.includes("fail")) {
+    return <AlertCircle className="size-4 text-red-500 dark:text-red-400" />
+  }
+  if (lower.includes("warn")) {
+    return <AlertTriangle className="size-4 text-amber-500 dark:text-amber-400" />
+  }
+  if (lower.includes("info")) {
+    return <Info className="size-4 text-sky-500 dark:text-sky-400" />
+  }
   if (lower.includes("rent") || lower.includes("vehicle")) {
     return <KeyRound className="size-4 text-amber-600 dark:text-amber-400" />
   }
@@ -27,8 +40,11 @@ function getServiceIcon(type?: string) {
   if (lower.includes("carry") || lower.includes("delivery") || lower.includes("package")) {
     return <Package className="size-4 text-emerald-600 dark:text-emerald-400" />
   }
-  if (lower.includes("verify") || lower.includes("approval")) {
+  if (lower.includes("verify") || lower.includes("approval") || lower.includes("profile")) {
     return <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+  }
+  if (lower.includes("success")) {
+    return <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
   }
   return <Bell className="size-4 text-primary" />
 }
@@ -182,7 +198,7 @@ export function MascotNotificationToast() {
 
   return (
     <div
-      className="fixed top-4 inset-x-4 max-w-sm sm:max-w-md sm:right-6 sm:inset-x-auto sm:top-5 z-[9999] pointer-events-none select-none"
+      className="fixed top-4 inset-x-4 max-w-sm sm:max-w-md sm:right-6 sm:inset-x-auto sm:top-5 z-[100] pointer-events-none select-none"
       role="region"
       aria-label="Campus Mascot Notifications"
     >
@@ -223,7 +239,11 @@ export function MascotNotificationToast() {
           onMouseLeave={() => setIsHoverPaused(false)}
           onFocus={() => setIsHoverPaused(true)}
           onBlur={() => setIsHoverPaused(false)}
-          className="pointer-events-auto relative w-full rounded-2xl border border-border/80 bg-card/95 backdrop-blur-md shadow-2xl p-4 text-foreground overflow-hidden"
+          className={`pointer-events-auto relative w-full rounded-2xl border shadow-2xl p-4 text-foreground overflow-hidden backdrop-blur-md ${
+            activeMascotNotification.type?.toLowerCase().includes("error")
+              ? "border-red-500/40 bg-card/95"
+              : "border-border/80 bg-card/95"
+          }`}
           role="alert"
           aria-live="polite"
         >
@@ -255,21 +275,26 @@ export function MascotNotificationToast() {
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2 mt-0.5">
-                {activeMascotNotification.message}
-              </p>
+              {activeMascotNotification.message &&
+                activeMascotNotification.message !== activeMascotNotification.title && (
+                  <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2 mt-0.5">
+                    {activeMascotNotification.message}
+                  </p>
+                )}
 
-              {/* Action Button */}
-              <div className="mt-2.5 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleActionClick}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer group"
-                >
-                  <span>{activeMascotNotification.actionLabel || "View Details"}</span>
-                  <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
-                </button>
-              </div>
+              {/* Action Button - only render if actionLabel or actionUrl is present */}
+              {(activeMascotNotification.actionLabel || activeMascotNotification.actionUrl) && (
+                <div className="mt-2.5 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleActionClick}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer group"
+                  >
+                    <span>{activeMascotNotification.actionLabel || "View Details"}</span>
+                    <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Dismiss Button */}

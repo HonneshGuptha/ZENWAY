@@ -1,6 +1,5 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ThemeProvider } from '@/components/layout/ThemeProvider'
 import { AuthProvider } from '@/context/AuthContext'
@@ -32,7 +31,6 @@ createRoot(document.getElementById('root')!).render(
             <NotificationProvider>
               <ErrorBoundary>
                 <App />
-                <Toaster richColors position="top-right" />
               </ErrorBoundary>
             </NotificationProvider>
           </RouterProvider>

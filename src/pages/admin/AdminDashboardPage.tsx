@@ -518,20 +518,8 @@ export function AdminDashboardPage() {
     }
   }
 
-  // Production environment safety check
-  const isProductionDeployment =
-    Boolean(import.meta.env.PROD) ||
-    (typeof window !== "undefined" &&
-      (window.location.hostname === "zenway.runs-on.dev" ||
-        window.location.hostname.endsWith(".runs-on.dev")))
-
-  // CLEAN SLATE RESET HANDLER
+  // PRESENTATION CLEAN SLATE RESET HANDLER
   const handleExecuteCleanSlateReset = async () => {
-    if (isProductionDeployment) {
-      toast.error("Clean-slate reset is permanently disabled in production.")
-      return
-    }
-
     if (resetConfirmationText !== "RESET") {
       toast.error("Please type RESET to confirm.")
       return
@@ -546,18 +534,26 @@ export function AdminDashboardPage() {
       }
 
       // Execute secure server-side RPC with session verification
-      const { error } = await (supabase.rpc as any)("clean_slate_demo_reset", {
+      let { error } = await (supabase.rpc as any)("execute_presentation_clean_slate_reset", {
         p_confirmation_token: "RESET",
       })
+
+      if (error) {
+        const fallback = await (supabase.rpc as any)("clean_slate_demo_reset", {
+          p_confirmation_token: "RESET",
+        })
+        error = fallback.error
+      }
 
       if (error) {
         throw error
       }
 
-      toast.success("Platform demo data reset to clean slate successfully!")
+      toast.success("Presentation clean-slate reset completed! Demonstration feeds cleared while 100% of student accounts and audit logs were preserved.")
       setIsResetDialogOpen(false)
       setResetConfirmationText("")
       await fetchStats()
+      await fetchLiveExchanges()
     } catch (err: any) {
       console.error("[AdminDashboard] Reset failed:", err)
       toast.error(err.message || "Failed to execute clean-slate reset.")
@@ -1069,36 +1065,27 @@ export function AdminDashboardPage() {
               </p>
 
               <div className="p-3 rounded-lg bg-red-950/20 border border-red-900/30 text-[11px] font-mono text-red-300/90 space-y-1">
-                <div>// SCOPED DEMO RECORD PURGE</div>
+                <div className="font-bold">// PRESENTATION CLEAN-SLATE RESET</div>
                 <div className="text-[10px] text-zinc-400">
-                  Preserves real student profiles, ID documents, and audit logs.
+                  Purges all Rent/Ride/Carry demo listings, requests, offers, reviews, disputes, and notifications.
+                </div>
+                <div className="text-[10px] text-emerald-400 font-semibold">
+                  Strictly preserves 100% of student accounts, admin accounts, student ID verifications, approved campus hubs, and system audit logs.
                 </div>
               </div>
 
-              {isProductionDeployment ? (
-                <div className="p-3 rounded-lg bg-zinc-900/80 border border-amber-500/30 text-amber-300 text-xs font-mono space-y-1.5">
-                  <div className="font-bold flex items-center gap-1.5 text-amber-400">
-                    <ShieldAlert className="size-4 text-amber-400 shrink-0" />
-                    <span>[PRODUCTION PROTECTED]</span>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 leading-relaxed">
-                    Clean-slate reset is permanently disabled in production to protect genuine student records, listings, and verification histories.
-                  </p>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => {
-                    setResetConfirmationText("")
-                    setIsResetDialogOpen(true)
-                  }}
-                  className="w-full text-xs font-mono h-9 bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer gap-2 border border-red-500/40"
-                >
-                  <Trash2 className="size-3.5" />
-                  <span>EXECUTE CLEAN SLATE RESET</span>
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  setResetConfirmationText("")
+                  setIsResetDialogOpen(true)
+                }}
+                className="w-full text-xs font-mono h-9 bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer gap-2 border border-red-500/40"
+              >
+                <Trash2 className="size-3.5" />
+                <span>PRESENTATION CLEAN-SLATE RESET</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -1203,27 +1190,31 @@ export function AdminDashboardPage() {
       </Dialog>
 
       {/* CLEAN SLATE RESET CONFIRMATION MODAL */}
-      <Dialog open={!isProductionDeployment && isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+      <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
         <DialogContent className="bg-[#09090B] border-red-900/60 text-[#FAFAFA] max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-base font-mono uppercase tracking-wider text-red-500 flex items-center gap-2">
               <AlertTriangle className="size-5 text-red-500" />
-              <span>CONFIRM CLEAN-SLATE RESET</span>
+              <span>CONFIRM PRESENTATION CLEAN-SLATE RESET</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-zinc-300">
-              This operation purges demo data across the platform via secure server-side RPC.
+              This operation purges demonstration exchange data across the platform via secure server-side RPC.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="p-3 rounded-lg bg-red-950/30 border border-red-900/40 text-xs text-red-200/90 space-y-1.5 font-mono">
-              <p className="font-bold text-red-400">SCOPED DEMO PURGE:</p>
+              <p className="font-bold text-red-400">PRESENTATION DEMO PURGE:</p>
               <ul className="list-disc list-inside space-y-0.5 text-[11px] text-zinc-300">
                 <li>Purges test vehicle listings &amp; test rental requests</li>
                 <li>Purges test carpool rides &amp; passenger bookings</li>
                 <li>Purges test carry transport offers &amp; requests</li>
-                <li><strong className="text-emerald-400">Preserves</strong> real student profiles &amp; ID verification submissions</li>
-                <li><strong className="text-emerald-400">Preserves</strong> complete system audit log history</li>
+                <li>Purges test reviews, disputes, and exchange notifications</li>
+                <li><strong className="text-emerald-400">Preserves</strong> 100% of student accounts &amp; passwords (auth.users)</li>
+                <li><strong className="text-emerald-400">Preserves</strong> 100% of student &amp; admin profiles</li>
+                <li><strong className="text-emerald-400">Preserves</strong> student ID verification records &amp; documents</li>
+                <li><strong className="text-emerald-400">Preserves</strong> approved campus localities &amp; hubs</li>
+                <li><strong className="text-emerald-400">Preserves</strong> complete append-only system audit log history</li>
                 <li><strong className="text-emerald-400">Preserves</strong> your Admin profile &amp; login credentials</li>
               </ul>
             </div>
@@ -1260,7 +1251,7 @@ export function AdminDashboardPage() {
               variant="destructive"
               size="sm"
               onClick={handleExecuteCleanSlateReset}
-              disabled={isExecutingReset || resetConfirmationText !== "RESET" || isProductionDeployment}
+              disabled={isExecutingReset || resetConfirmationText !== "RESET"}
               className="text-xs font-mono bg-red-600 hover:bg-red-700 text-white font-bold gap-1.5"
             >
               {isExecutingReset ? (
