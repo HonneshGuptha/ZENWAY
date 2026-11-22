@@ -1,3 +1,4 @@
+import * as React from "react"
 import { motion } from "motion/react"
 import { Home, KeyRound, Car, Package, Activity } from "lucide-react"
 import type { NavTab } from "./Header"
@@ -21,12 +22,30 @@ const dockItems: DockItem[] = [
   { id: "activity", label: "ACTIVITY", icon: Activity },
 ]
 
+const prefetchTab = (tab: NavTab) => {
+  if (tab === "profile") void import("@/pages/profile/StudentProfilePage")
+}
+
 /**
  * BottomDock:
  * Sleek, centered post-login floating bottom glass dock for desktop & mobile.
  * Uses motion/react layoutId="bottomDockActive" for a springy active pill.
  */
 export function BottomDock({ currentTab, onTabChange }: BottomDockProps) {
+  React.useEffect(() => {
+    // Idle prefetch of remaining lazy tab pages (e.g. StudentProfilePage)
+    const prefetchCore = () => {
+      void import("@/pages/profile/StudentProfilePage")
+    }
+    if (typeof window !== "undefined") {
+      if ("requestIdleCallback" in window) {
+        ;(window as any).requestIdleCallback(prefetchCore)
+      } else {
+        setTimeout(prefetchCore, 250)
+      }
+    }
+  }, [])
+
   return (
     <div
       role="navigation"
@@ -42,6 +61,8 @@ export function BottomDock({ currentTab, onTabChange }: BottomDockProps) {
             key={item.id}
             type="button"
             onClick={() => onTabChange(item.id)}
+            onMouseEnter={() => prefetchTab(item.id)}
+            onFocus={() => prefetchTab(item.id)}
             aria-current={isActive ? "page" : undefined}
             aria-label={item.label}
             className={`relative min-h-[44px] min-w-[44px] justify-center px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.1em] uppercase transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center gap-1.5 ${

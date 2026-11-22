@@ -23,11 +23,11 @@ const VerifyStudentPage = React.lazy(() => import("@/pages/onboarding/VerifyStud
 const VerificationStatusPage = React.lazy(() => import("@/pages/onboarding/VerificationStatusPage").then(m => ({ default: m.VerificationStatusPage })))
 const StudentProfilePage = React.lazy(() => import("@/pages/profile/StudentProfilePage").then(m => ({ default: m.StudentProfilePage })))
 
-// Exchange modules
-const RentPage = React.lazy(() => import("@/pages/exchange/RentPage").then(m => ({ default: m.RentPage })))
-const RidePage = React.lazy(() => import("@/pages/exchange/RidePage").then(m => ({ default: m.RidePage })))
-const CarryPage = React.lazy(() => import("@/pages/exchange/CarryPage").then(m => ({ default: m.CarryPage })))
-const ActivityPage = React.lazy(() => import("@/pages/activity/ActivityPage").then(m => ({ default: m.ActivityPage })))
+// Eagerly imported core exchange tab pages to eliminate route-switch lag when jumping to middle/third navbar tabs
+import { RentPage } from "@/pages/exchange/RentPage"
+import { RidePage } from "@/pages/exchange/RidePage"
+import { CarryPage } from "@/pages/exchange/CarryPage"
+import { ActivityPage } from "@/pages/activity/ActivityPage"
 
 // Support and Legal pages
 const TermsPage = React.lazy(() => import("@/pages/legal/TermsPage").then(m => ({ default: m.TermsPage })))
@@ -48,8 +48,30 @@ const AdminReportsPage = React.lazy(() => import("@/pages/admin/AdminReportsPage
 
 function PageLoadingFallback() {
   return (
-    <div className="min-h-[50vh] flex flex-col items-center justify-center">
-      <MascotLoader fullscreen={false} />
+    <div className="w-full max-w-7xl mx-auto space-y-6 animate-pulse py-6 px-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-border/40">
+        <div className="space-y-2">
+          <div className="h-7 w-48 bg-muted/60 rounded-md" />
+          <div className="h-4 w-72 bg-muted/40 rounded-md" />
+        </div>
+        <div className="h-9 w-32 bg-muted/60 rounded-md" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="h-44 rounded-xl border border-border/40 bg-muted/20 p-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <div className="h-5 w-32 bg-muted/50 rounded" />
+              <div className="h-5 w-16 bg-muted/50 rounded-full" />
+            </div>
+            <div className="h-4 w-full bg-muted/30 rounded" />
+            <div className="h-4 w-2/3 bg-muted/30 rounded" />
+            <div className="pt-4 flex justify-between items-center border-t border-border/20">
+              <div className="h-6 w-20 bg-muted/50 rounded" />
+              <div className="h-8 w-24 bg-muted/60 rounded-lg" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

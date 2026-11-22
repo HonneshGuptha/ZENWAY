@@ -194,25 +194,38 @@ export function CarryPage() {
     }
   }, [])
 
-  // Fetch User's Carry Requests & Offers
+  // Fetch User's Carry Requests & Offers (Concurrent Execution)
   const fetchUserCarryData = React.useCallback(async () => {
     if (!user) return
     try {
-      // My created transport requests
-      const { data: myReqs } = await supabase
-        .from("carry_requests")
-        .select(`
-          id, requester_id, assigned_carrier_id, accepted_offer_id, item_title,
-          item_description, item_size, pickup_location, delivery_location,
-          needed_by, reward_amount, pickup_photo_path, status, created_at
-        `)
-        .eq("requester_id", user.id)
-        .order("created_at", { ascending: false })
+      // Concurrently query my created transport requests and sent carrier offers
+      const [myReqsRes, sentOffersRes] = await Promise.all([
+        supabase
+          .from("carry_requests")
+          .select(`
+            id, requester_id, assigned_carrier_id, accepted_offer_id, item_title,
+            item_description, item_size, pickup_location, delivery_location,
+            needed_by, reward_amount, pickup_photo_path, status, created_at
+          `)
+          .eq("requester_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("carry_offers")
+          .select(`
+            id, request_id, carrier_id, message, proposed_delivery_time, status, created_at,
+            request:carry_requests(item_title, pickup_location, delivery_location, reward_amount, status, requester_id),
+            carrier:public_profiles!carry_offers_carrier_id_fkey(full_name, university_name)
+          `)
+          .eq("carrier_id", user.id)
+          .order("created_at", { ascending: false }),
+      ])
 
-      setMyRequests(deduplicateById((myReqs || []) as CarryRequestWithDetails[]))
+      const myReqs = myReqsRes.data || []
+      setMyRequests(deduplicateById(myReqs as CarryRequestWithDetails[]))
+      setMySentOffers(deduplicateById((sentOffersRes.data || []) as any))
 
       // Incoming offers on my requests
-      const myReqIds = (myReqs || []).map((r) => r.id)
+      const myReqIds = myReqs.map((r) => r.id)
       if (myReqIds.length > 0) {
         const { data: offersData } = await supabase
           .from("carry_offers")
@@ -228,29 +241,16 @@ export function CarryPage() {
       } else {
         setIncomingOffers([])
       }
-
-      // My sent carrier offers
-      const { data: sentOffers } = await supabase
-        .from("carry_offers")
-        .select(`
-          id, request_id, carrier_id, message, proposed_delivery_time, status, created_at,
-          request:carry_requests(item_title, pickup_location, delivery_location, reward_amount, status, requester_id),
-          carrier:public_profiles!carry_offers_carrier_id_fkey(full_name, university_name)
-        `)
-        .eq("carrier_id", user.id)
-        .order("created_at", { ascending: false })
-
-      setMySentOffers(deduplicateById((sentOffers || []) as any))
     } catch (err: any) {
       console.error("[CarryPage] Fetch user carry error:", err)
     }
   }, [user])
 
   React.useEffect(() => {
-    fetchCarryRequests()
-    if (user) {
-      fetchUserCarryData()
-    }
+    void Promise.all([
+      fetchCarryRequests(),
+      user ? fetchUserCarryData() : Promise.resolve(),
+    ])
   }, [fetchCarryRequests, fetchUserCarryData, user])
 
   // Create Request Handler with Profile Completeness Protection

@@ -17,6 +17,10 @@ interface MobileNavItem {
   icon: React.ElementType
 }
 
+const prefetchTab = (tab: NavTab) => {
+  if (tab === "profile") void import("@/pages/profile/StudentProfilePage")
+}
+
 const authMobileItems: MobileNavItem[] = [
   { id: "home", label: "HOME", icon: Home },
   { id: "rent", label: "RENT", icon: KeyRound },
@@ -138,6 +142,9 @@ export function MobileNav({ currentTab, onTabChange }: MobileNavProps) {
               key={item.id}
               type="button"
               onClick={() => onTabChange(item.id)}
+              onTouchStart={() => prefetchTab(item.id)}
+              onMouseEnter={() => prefetchTab(item.id)}
+              onFocus={() => prefetchTab(item.id)}
               aria-current={isActive ? "page" : undefined}
               className={`relative flex min-h-[48px] min-w-[48px] flex-col items-center justify-center rounded-xl px-1.5 py-1 text-xs transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 isActive

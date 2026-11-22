@@ -220,28 +220,41 @@ export function RidePage() {
     }
   }, [])
 
-  // Fetch User's Published Rides & Requests
+  // Fetch User's Published Rides & Requests (Concurrent Execution)
   const fetchUserRides = React.useCallback(async () => {
     if (!user) return
     try {
-      // My published rides
-      const { data: myRides } = await supabase
-        .from("rides")
-        .select(`
-          id, driver_id, origin_name, destination_name, departure_time,
-          available_seats, price_per_seat, notes, status, created_at
-        `)
-        .eq("driver_id", user.id)
-        .order("created_at", { ascending: false })
+      // Concurrently query my published rides and sent seat requests
+      const [myRidesRes, sentDataRes] = await Promise.all([
+        supabase
+          .from("rides")
+          .select(`
+            id, driver_id, origin_name, destination_name, departure_time,
+            available_seats, price_per_seat, notes, status, created_at
+          `)
+          .eq("driver_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("ride_requests")
+          .select(`
+            id, ride_id, passenger_id, seats_requested, pickup_note, status, created_at,
+            ride:rides(origin_name, destination_name, departure_time, price_per_seat, available_seats, driver_id, driver:public_profiles!rides_driver_id_fkey(full_name, upi_id)),
+            passenger:public_profiles!ride_requests_passenger_id_fkey(full_name, university_name, upi_id)
+          `)
+          .eq("passenger_id", user.id)
+          .order("created_at", { ascending: false }),
+      ])
 
-      const formattedMyRides: RideWithDriver[] = (myRides || []).map((r: any) => ({
+      const myRides = myRidesRes.data || []
+      const formattedMyRides: RideWithDriver[] = myRides.map((r: any) => ({
         ...r,
         pickup: r.origin_name,
         destination: r.destination_name,
       }))
       setMyPublishedRides(deduplicateById(formattedMyRides))
+      setMySentRequests(deduplicateById((sentDataRes.data || []) as any))
 
-      const myRideIds = (myRides || []).map((r) => r.id)
+      const myRideIds = myRides.map((r) => r.id)
       if (myRideIds.length > 0) {
         const { data: incomingData } = await supabase
           .from("ride_requests")
@@ -257,19 +270,6 @@ export function RidePage() {
       } else {
         setIncomingRequests([])
       }
-
-      // My sent seat requests
-      const { data: sentData } = await supabase
-        .from("ride_requests")
-        .select(`
-          id, ride_id, passenger_id, seats_requested, pickup_note, status, created_at,
-          ride:rides(origin_name, destination_name, departure_time, price_per_seat, available_seats, driver_id, driver:public_profiles!rides_driver_id_fkey(full_name, upi_id)),
-          passenger:public_profiles!ride_requests_passenger_id_fkey(full_name, university_name, upi_id)
-        `)
-        .eq("passenger_id", user.id)
-        .order("created_at", { ascending: false })
-
-      setMySentRequests(deduplicateById((sentData || []) as any))
     } catch (err: any) {
       console.error("[RidePage] Fetch user rides error:", err)
     }
@@ -297,11 +297,11 @@ export function RidePage() {
   }, [])
 
   React.useEffect(() => {
-    fetchRides()
-    fetchApprovedHubs()
-    if (user) {
-      fetchUserRides()
-    }
+    void Promise.all([
+      fetchRides(),
+      fetchApprovedHubs(),
+      user ? fetchUserRides() : Promise.resolve(),
+    ])
   }, [fetchRides, fetchApprovedHubs, fetchUserRides, user])
 
   // Student Hub Suggestion Handler

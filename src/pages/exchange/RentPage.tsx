@@ -252,17 +252,30 @@ export function RentPage() {
     }
   }, [])
 
-  // Fetch User's Rentals & Requests
+  // Fetch User's Rentals & Requests (Concurrent Execution)
   const fetchUserRentals = React.useCallback(async () => {
     if (!user) return
     try {
-      // Incoming requests for my vehicles
-      const { data: myVehicles } = await supabase
-        .from("vehicles")
-        .select("id")
-        .eq("owner_id", user.id)
+      // Concurrently query my vehicles and sent requests
+      const [myVehiclesRes, sentDataRes] = await Promise.all([
+        supabase
+          .from("vehicles")
+          .select("id")
+          .eq("owner_id", user.id),
+        supabase
+          .from("rental_requests")
+          .select(`
+            id, vehicle_id, renter_id, owner_id, start_time, end_time, total_price, deposit_amount, status, created_at,
+            vehicle:vehicles(title, type, hourly_rate, pickup_location, owner_id, owner:public_profiles!vehicles_owner_id_fkey(full_name, upi_id)),
+            renter:public_profiles!rental_requests_renter_id_fkey(full_name, university_name, upi_id)
+          `)
+          .eq("renter_id", user.id)
+          .order("created_at", { ascending: false }),
+      ])
 
-      const myVehicleIds = (myVehicles || []).map((v) => v.id)
+      setMySentRequests(deduplicateById((sentDataRes.data || []) as any))
+
+      const myVehicleIds = (myVehiclesRes.data || []).map((v) => v.id)
       if (myVehicleIds.length > 0) {
         const { data: incomingData } = await supabase
           .from("rental_requests")
@@ -278,29 +291,16 @@ export function RentPage() {
       } else {
         setIncomingRequests([])
       }
-
-      // My sent requests
-      const { data: sentData } = await supabase
-        .from("rental_requests")
-        .select(`
-          id, vehicle_id, renter_id, owner_id, start_time, end_time, total_price, deposit_amount, status, created_at,
-          vehicle:vehicles(title, type, hourly_rate, pickup_location, owner_id, owner:public_profiles!vehicles_owner_id_fkey(full_name, upi_id)),
-          renter:public_profiles!rental_requests_renter_id_fkey(full_name, university_name, upi_id)
-        `)
-        .eq("renter_id", user.id)
-        .order("created_at", { ascending: false })
-
-      setMySentRequests(deduplicateById((sentData || []) as any))
     } catch (err: any) {
       console.error("[RentPage] Fetch requests error:", err)
     }
   }, [user])
 
   React.useEffect(() => {
-    fetchVehicles()
-    if (user) {
-      fetchUserRentals()
-    }
+    void Promise.all([
+      fetchVehicles(),
+      user ? fetchUserRentals() : Promise.resolve(),
+    ])
   }, [fetchVehicles, fetchUserRentals, user])
 
   // Handle Listing Creation with Profile Completeness Protection
