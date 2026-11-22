@@ -281,10 +281,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // Mark single as read
   const markAsRead = React.useCallback(async (id: string) => {
     try {
-      await supabase
-        .from("notifications")
-        .update({ is_read: true })
-        .eq("id", id)
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+      if (isUuid) {
+        await supabase
+          .from("notifications")
+          .update({ is_read: true })
+          .eq("id", id)
+      }
 
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))

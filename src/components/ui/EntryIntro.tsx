@@ -695,7 +695,7 @@ export function EntryIntro({ onComplete }: EntryIntroProps) {
                     stroke={MASCOT_COLORS.outline}
                     strokeWidth="2.5"
                   />
-                  <path d="-4 10h10" stroke={MASCOT_COLORS.outline} strokeWidth="1.5" />
+                  <path d="M-4 10h10" stroke={MASCOT_COLORS.outline} strokeWidth="1.5" />
                   <rect x="-1" y="13" width="4" height="4" rx="1" fill={MASCOT_COLORS.cream} stroke={MASCOT_COLORS.outline} strokeWidth="1.2" />
                 </g>
 
