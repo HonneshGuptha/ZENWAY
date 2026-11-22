@@ -38,6 +38,7 @@ import {
   X,
 } from "lucide-react"
 import { toast } from "sonner"
+import { deduplicateById } from "@/utils/deduplicate"
 import { calculateRentalPricing } from "../../utils/rentalPricing"
 import { formatReadableDateTime } from "@/utils/formatters"
 import { pageTransitionVariants } from "@/lib/motion"
@@ -117,6 +118,10 @@ export function RentPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [fetchError, setFetchError] = React.useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null)
+  const isSubmittingListingRef = React.useRef(false)
+  const isSubmittingBookingRef = React.useRef(false)
+  const actionLoadingIdRef = React.useRef<string | null>(null)
+  const isSubmittingReviewRef = React.useRef(false)
 
   // Filters
   const [selectedType, setSelectedType] = React.useState<string>("all")
@@ -237,7 +242,7 @@ export function RentPage() {
         primary_image: imageMap[v.id] || null,
       }))
 
-      setVehicles(formatted)
+      setVehicles(deduplicateById(formatted))
     } catch (err: any) {
       console.error("[RentPage] Fetch vehicles error:", err)
       setFetchError(err.message || "Failed to load vehicle listings.")
@@ -269,7 +274,7 @@ export function RentPage() {
           .in("vehicle_id", myVehicleIds)
           .order("created_at", { ascending: false })
 
-        setIncomingRequests((incomingData || []) as any)
+        setIncomingRequests(deduplicateById((incomingData || []) as any))
       } else {
         setIncomingRequests([])
       }
@@ -285,7 +290,7 @@ export function RentPage() {
         .eq("renter_id", user.id)
         .order("created_at", { ascending: false })
 
-      setMySentRequests((sentData || []) as any)
+      setMySentRequests(deduplicateById((sentData || []) as any))
     } catch (err: any) {
       console.error("[RentPage] Fetch requests error:", err)
     }
@@ -301,14 +306,11 @@ export function RentPage() {
   // Handle Listing Creation with Profile Completeness Protection
   const handleCreateListing = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!profileGuard.requireCompleteProfile(() => proceedCreateListing(), "Vehicle Rental Listing")) {
-      return
-    }
-    await proceedCreateListing()
+    profileGuard.requireCompleteProfile(() => proceedCreateListing(), "Vehicle Rental Listing")
   }
 
   const proceedCreateListing = async () => {
-    if (isSubmittingListing) return
+    if (isSubmittingListingRef.current || isSubmittingListing) return
 
     if (!user) {
       toast.error("Please sign in to list a vehicle.")
@@ -338,6 +340,7 @@ export function RentPage() {
     }
 
     try {
+      isSubmittingListingRef.current = true
       setIsSubmittingListing(true)
       const hourly = newHourlyRate ? parseFloat(newHourlyRate) : null
       const daily = newDailyRate ? parseFloat(newDailyRate) : null
@@ -412,6 +415,7 @@ export function RentPage() {
       console.error("[RentPage] Create listing error:", err)
       toast.error(err.message || "Failed to create vehicle listing.")
     } finally {
+      isSubmittingListingRef.current = false
       setIsSubmittingListing(false)
     }
   }
@@ -419,14 +423,11 @@ export function RentPage() {
   // Handle Booking Submit with Profile Completeness Protection
   const handleConfirmBooking = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!profileGuard.requireCompleteProfile(() => proceedConfirmBooking(), "Vehicle Rental Reservation")) {
-      return
-    }
-    await proceedConfirmBooking()
+    profileGuard.requireCompleteProfile(() => proceedConfirmBooking(), "Vehicle Rental Reservation")
   }
 
   const proceedConfirmBooking = async () => {
-    if (isSubmittingBooking) return
+    if (isSubmittingBookingRef.current || isSubmittingBooking) return
     if (!user || !bookingVehicle) return
     if (!isVerified) {
       toast.error("Student ID verification required before reserving vehicles.")
@@ -456,6 +457,7 @@ export function RentPage() {
     const calculatedTotal = pricing.rentalSubtotal
 
     try {
+      isSubmittingBookingRef.current = true
       setIsSubmittingBooking(true)
 
       // 1. Authoritative server-side booking RPC
@@ -500,20 +502,20 @@ export function RentPage() {
       console.error("[RentPage] Booking request error:", err)
       toast.error(err.message || "Failed to submit booking request.")
     } finally {
+      isSubmittingBookingRef.current = false
       setIsSubmittingBooking(false)
     }
   }
 
   // Owner Action: Accept Request with Profile Completeness Protection
   const handleAcceptRequest = async (requestId: string) => {
-    if (!profileGuard.requireCompleteProfile(() => proceedAcceptRequest(requestId), "Accepting Rental Request")) {
-      return
-    }
-    await proceedAcceptRequest(requestId)
+    profileGuard.requireCompleteProfile(() => proceedAcceptRequest(requestId), "Accepting Rental Request")
   }
 
   const proceedAcceptRequest = async (requestId: string) => {
+    if (actionLoadingIdRef.current) return
     try {
+      actionLoadingIdRef.current = requestId
       setActionLoadingId(requestId)
       const { error } = await supabase.rpc("accept_rental_request", {
         p_request_id: requestId,
@@ -529,13 +531,16 @@ export function RentPage() {
       console.error("[RentPage] Accept request error:", err)
       toast.error(err.message || "Failed to accept rental request.")
     } finally {
+      actionLoadingIdRef.current = null
       setActionLoadingId(null)
     }
   }
 
   // Owner Action: Reject Request
   const handleRejectRequest = async (requestId: string) => {
+    if (actionLoadingIdRef.current) return
     try {
+      actionLoadingIdRef.current = requestId
       setActionLoadingId(requestId)
       const { error } = await supabase
         .from("rental_requests")
@@ -549,13 +554,16 @@ export function RentPage() {
       console.error("[RentPage] Reject error:", err)
       toast.error(err.message || "Failed to reject request.")
     } finally {
+      actionLoadingIdRef.current = null
       setActionLoadingId(null)
     }
   }
 
   // Mark Completed
   const handleCompleteRental = async (requestId: string) => {
+    if (actionLoadingIdRef.current) return
     try {
+      actionLoadingIdRef.current = requestId
       setActionLoadingId(requestId)
       const { error } = await supabase
         .from("rental_requests")
@@ -574,18 +582,19 @@ export function RentPage() {
       console.error("[RentPage] Complete error:", err)
       toast.error(err.message || "Failed to complete rental.")
     } finally {
+      actionLoadingIdRef.current = null
       setActionLoadingId(null)
     }
   }
 
-
-
   // Submit Review
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmittingReviewRef.current || isSubmittingReview) return
     if (!user || !reviewBooking) return
 
     try {
+      isSubmittingReviewRef.current = true
       setIsSubmittingReview(true)
       const revieweeId = reviewBooking.renter_id === user.id ? reviewBooking.owner_id : reviewBooking.renter_id
       const { error } = await supabase.from("reviews").insert({
@@ -606,6 +615,7 @@ export function RentPage() {
       console.error("[RentPage] Review submit error:", err)
       toast.error(err.message || "Failed to submit review.")
     } finally {
+      isSubmittingReviewRef.current = false
       setIsSubmittingReview(false)
     }
   }

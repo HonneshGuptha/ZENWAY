@@ -37,6 +37,7 @@ import {
   Check,
 } from "lucide-react"
 import { toast } from "sonner"
+import { deduplicateById } from "@/utils/deduplicate"
 import { pageTransitionVariants } from "@/lib/motion"
 import { formatReadableDateTime } from "@/utils/formatters"
 import {
@@ -121,6 +122,10 @@ export function RidePage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [fetchError, setFetchError] = React.useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null)
+  const isSubmittingRideRef = React.useRef(false)
+  const isSubmittingJoinRef = React.useRef(false)
+  const actionLoadingIdRef = React.useRef<string | null>(null)
+  const isSubmittingReviewRef = React.useRef(false)
   const [searchQuery, setSearchQuery] = React.useState("")
 
   // Publish Ride Modal (Campus-Anchored Routing & Dynamic Hubs)
@@ -205,7 +210,7 @@ export function RidePage() {
         driver: Array.isArray(r.driver) ? r.driver[0] : r.driver,
       }))
 
-      setRides(formatted)
+      setRides(deduplicateById(formatted))
     } catch (err: any) {
       console.error("[RidePage] Fetch rides error:", err)
       setFetchError(err.message || "Failed to load carpools.")
@@ -234,7 +239,7 @@ export function RidePage() {
         pickup: r.origin_name,
         destination: r.destination_name,
       }))
-      setMyPublishedRides(formattedMyRides)
+      setMyPublishedRides(deduplicateById(formattedMyRides))
 
       const myRideIds = (myRides || []).map((r) => r.id)
       if (myRideIds.length > 0) {
@@ -248,7 +253,7 @@ export function RidePage() {
           .in("ride_id", myRideIds)
           .order("created_at", { ascending: false })
 
-        setIncomingRequests((incomingData || []) as any)
+        setIncomingRequests(deduplicateById((incomingData || []) as any))
       } else {
         setIncomingRequests([])
       }
@@ -264,7 +269,7 @@ export function RidePage() {
         .eq("passenger_id", user.id)
         .order("created_at", { ascending: false })
 
-      setMySentRequests((sentData || []) as any)
+      setMySentRequests(deduplicateById((sentData || []) as any))
     } catch (err: any) {
       console.error("[RidePage] Fetch user rides error:", err)
     }
@@ -338,14 +343,11 @@ export function RidePage() {
   // Publish Ride Handler with Profile Completeness Protection
   const handlePublishRide = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!profileGuard.requireCompleteProfile(() => proceedPublishRide(), "Ride Share Offering")) {
-      return
-    }
-    await proceedPublishRide()
+    profileGuard.requireCompleteProfile(() => proceedPublishRide(), "Ride Share Offering")
   }
 
   const proceedPublishRide = async () => {
-    if (isSubmittingRide) return
+    if (isSubmittingRideRef.current || isSubmittingRide) return
     if (!user) return
     if (!isVerified) {
       toast.error("Student ID verification required before offering carpools.")
@@ -371,6 +373,7 @@ export function RidePage() {
     const destination = direction === "to_college" ? CAMPUS_LOCATION : trimmedLocality
 
     try {
+      isSubmittingRideRef.current = true
       setIsSubmittingRide(true)
       const seatsCount = parseInt(seats, 10) || 3
       const { error } = await supabase.from("rides").insert({
@@ -399,6 +402,7 @@ export function RidePage() {
       console.error("[RidePage] Publish ride error:", err)
       toast.error(err.message || "Failed to publish ride.")
     } finally {
+      isSubmittingRideRef.current = false
       setIsSubmittingRide(false)
     }
   }
@@ -406,14 +410,11 @@ export function RidePage() {
   // Join Ride Handler with Profile Completeness Protection
   const handleConfirmJoin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!profileGuard.requireCompleteProfile(() => proceedConfirmJoin(), "Seat Reservation")) {
-      return
-    }
-    await proceedConfirmJoin()
+    profileGuard.requireCompleteProfile(() => proceedConfirmJoin(), "Seat Reservation")
   }
 
   const proceedConfirmJoin = async () => {
-    if (isSubmittingJoin) return
+    if (isSubmittingJoinRef.current || isSubmittingJoin) return
     if (!user || !joiningRide) return
     if (!isVerified) {
       toast.error("Student ID verification required before reserving seats.")
@@ -427,6 +428,7 @@ export function RidePage() {
     }
 
     try {
+      isSubmittingJoinRef.current = true
       setIsSubmittingJoin(true)
 
       // 1. Authoritative server-side seat booking RPC
@@ -468,20 +470,20 @@ export function RidePage() {
       console.error("[RidePage] Join request error:", err)
       toast.error(err.message || "Failed to request seat.")
     } finally {
+      isSubmittingJoinRef.current = false
       setIsSubmittingJoin(false)
     }
   }
 
   // Driver Action: Accept Request with Profile Completeness Protection
   const handleAcceptRequest = async (requestId: string) => {
-    if (!profileGuard.requireCompleteProfile(() => proceedAcceptRequest(requestId), "Accepting Ride Request")) {
-      return
-    }
-    await proceedAcceptRequest(requestId)
+    profileGuard.requireCompleteProfile(() => proceedAcceptRequest(requestId), "Accepting Ride Request")
   }
 
   const proceedAcceptRequest = async (requestId: string) => {
+    if (actionLoadingIdRef.current) return
     try {
+      actionLoadingIdRef.current = requestId
       setActionLoadingId(requestId)
       const { error } = await supabase.rpc("accept_ride_request", {
         p_request_id: requestId,
@@ -497,13 +499,16 @@ export function RidePage() {
       console.error("[RidePage] Accept request error:", err)
       toast.error(err.message || "Failed to accept seat request.")
     } finally {
+      actionLoadingIdRef.current = null
       setActionLoadingId(null)
     }
   }
 
   // Driver Action: Reject Request
   const handleRejectRequest = async (requestId: string) => {
+    if (actionLoadingIdRef.current) return
     try {
+      actionLoadingIdRef.current = requestId
       setActionLoadingId(requestId)
       const { error } = await supabase
         .from("ride_requests")
@@ -517,13 +522,16 @@ export function RidePage() {
       console.error("[RidePage] Reject error:", err)
       toast.error(err.message || "Failed to reject request.")
     } finally {
+      actionLoadingIdRef.current = null
       setActionLoadingId(null)
     }
   }
 
   // Complete Ride
   const handleCompleteRide = async (rideId: string) => {
+    if (actionLoadingIdRef.current) return
     try {
+      actionLoadingIdRef.current = rideId
       setActionLoadingId(rideId)
       const { error } = await supabase
         .from("rides")
@@ -541,18 +549,19 @@ export function RidePage() {
       console.error("[RidePage] Complete error:", err)
       toast.error(err.message || "Failed to complete ride.")
     } finally {
+      actionLoadingIdRef.current = null
       setActionLoadingId(null)
     }
   }
 
-
-
   // Review Submit
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmittingReviewRef.current || isSubmittingReview) return
     if (!user || !reviewRide) return
 
     try {
+      isSubmittingReviewRef.current = true
       setIsSubmittingReview(true)
       const revieweeId = reviewRide.passenger_id === user.id ? reviewRide.ride?.driver_id || user.id : reviewRide.passenger_id
       const { error } = await supabase.from("reviews").insert({
@@ -573,6 +582,7 @@ export function RidePage() {
       console.error("[RidePage] Review submit error:", err)
       toast.error(err.message || "Failed to submit review.")
     } finally {
+      isSubmittingReviewRef.current = false
       setIsSubmittingReview(false)
     }
   }

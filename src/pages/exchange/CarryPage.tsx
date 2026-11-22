@@ -35,6 +35,7 @@ import {
   X,
 } from "lucide-react"
 import { toast } from "sonner"
+import { deduplicateById } from "@/utils/deduplicate"
 import { pageTransitionVariants } from "@/lib/motion"
 import { formatReadableDateTime } from "@/utils/formatters"
 import { LocationPickerModal } from "@/components/location/LocationPickerModal"
@@ -107,6 +108,10 @@ export function CarryPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [fetchError, setFetchError] = React.useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null)
+  const isSubmittingRequestRef = React.useRef(false)
+  const isSubmittingOfferRef = React.useRef(false)
+  const actionLoadingIdRef = React.useRef<string | null>(null)
+  const isSubmittingReviewRef = React.useRef(false)
 
   // Filters
   const [selectedSize, setSelectedSize] = React.useState<string>("all")
@@ -179,7 +184,7 @@ export function CarryPage() {
         requester: Array.isArray(c.requester) ? c.requester[0] : c.requester,
       }))
 
-      setRequests(formatted)
+      setRequests(deduplicateById(formatted))
     } catch (err: any) {
       console.error("[CarryPage] Fetch requests error:", err)
       setFetchError(err.message || "Failed to load carry requests.")
@@ -204,7 +209,7 @@ export function CarryPage() {
         .eq("requester_id", user.id)
         .order("created_at", { ascending: false })
 
-      setMyRequests((myReqs || []) as CarryRequestWithDetails[])
+      setMyRequests(deduplicateById((myReqs || []) as CarryRequestWithDetails[]))
 
       // Incoming offers on my requests
       const myReqIds = (myReqs || []).map((r) => r.id)
@@ -219,7 +224,7 @@ export function CarryPage() {
           .in("request_id", myReqIds)
           .order("created_at", { ascending: false })
 
-        setIncomingOffers((offersData || []) as any)
+        setIncomingOffers(deduplicateById((offersData || []) as any))
       } else {
         setIncomingOffers([])
       }
@@ -235,7 +240,7 @@ export function CarryPage() {
         .eq("carrier_id", user.id)
         .order("created_at", { ascending: false })
 
-      setMySentOffers((sentOffers || []) as any)
+      setMySentOffers(deduplicateById((sentOffers || []) as any))
     } catch (err: any) {
       console.error("[CarryPage] Fetch user carry error:", err)
     }
@@ -251,13 +256,11 @@ export function CarryPage() {
   // Create Request Handler with Profile Completeness Protection
   const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!profileGuard.requireCompleteProfile(() => proceedCreateRequest(), "Package Delivery Request")) {
-      return
-    }
-    await proceedCreateRequest()
+    profileGuard.requireCompleteProfile(() => proceedCreateRequest(), "Package Delivery Request")
   }
 
   const proceedCreateRequest = async () => {
+    if (isSubmittingRequestRef.current || isSubmittingRequest) return
     if (!user) return
     if (!isVerified) {
       toast.error("Student ID verification required before requesting item deliveries.")
@@ -269,6 +272,7 @@ export function CarryPage() {
     }
 
     try {
+      isSubmittingRequestRef.current = true
       setIsSubmittingRequest(true)
       let photoPath: string | null = null
 
@@ -316,6 +320,7 @@ export function CarryPage() {
       console.error("[CarryPage] Create request error:", err)
       toast.error(err.message || "Failed to create delivery request.")
     } finally {
+      isSubmittingRequestRef.current = false
       setIsSubmittingRequest(false)
     }
   }
@@ -323,13 +328,11 @@ export function CarryPage() {
   // Submit Carrier Offer Handler with Profile Completeness Protection
   const handleConfirmOffer = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!profileGuard.requireCompleteProfile(() => proceedConfirmOffer(), "Carrier Delivery Offer")) {
-      return
-    }
-    await proceedConfirmOffer()
+    profileGuard.requireCompleteProfile(() => proceedConfirmOffer(), "Carrier Delivery Offer")
   }
 
   const proceedConfirmOffer = async () => {
+    if (isSubmittingOfferRef.current || isSubmittingOffer) return
     if (!user || !offeringRequest) return
     if (!isVerified) {
       toast.error("Student ID verification required before offering to carry.")
@@ -337,6 +340,7 @@ export function CarryPage() {
     }
 
     try {
+      isSubmittingOfferRef.current = true
       setIsSubmittingOffer(true)
       const { error } = await supabase.from("carry_offers").insert({
         request_id: offeringRequest.id,
@@ -358,20 +362,20 @@ export function CarryPage() {
       console.error("[CarryPage] Submit offer error:", err)
       toast.error(err.message || "Failed to submit offer.")
     } finally {
+      isSubmittingOfferRef.current = false
       setIsSubmittingOffer(false)
     }
   }
 
   // Accept Offer Handler with Profile Completeness Protection
   const handleAcceptOffer = async (offerId: string) => {
-    if (!profileGuard.requireCompleteProfile(() => proceedAcceptOffer(offerId), "Accepting Carry Offer")) {
-      return
-    }
-    await proceedAcceptOffer(offerId)
+    profileGuard.requireCompleteProfile(() => proceedAcceptOffer(offerId), "Accepting Carry Offer")
   }
 
   const proceedAcceptOffer = async (offerId: string) => {
+    if (actionLoadingIdRef.current) return
     try {
+      actionLoadingIdRef.current = offerId
       setActionLoadingId(offerId)
       const { error } = await supabase.rpc("accept_carry_offer", {
         p_offer_id: offerId,
@@ -384,13 +388,16 @@ export function CarryPage() {
       console.error("[CarryPage] Accept offer error:", err)
       toast.error(err.message || "Failed to accept offer.")
     } finally {
+      actionLoadingIdRef.current = null
       setActionLoadingId(null)
     }
   }
 
   // Update Status: In Transit
   const handleMarkInTransit = async (requestId: string) => {
+    if (actionLoadingIdRef.current) return
     try {
+      actionLoadingIdRef.current = requestId
       setActionLoadingId(requestId)
       const { error } = await supabase
         .from("carry_requests")
@@ -403,13 +410,16 @@ export function CarryPage() {
       console.error("[CarryPage] In-transit error:", err)
       toast.error(err.message || "Failed to update status.")
     } finally {
+      actionLoadingIdRef.current = null
       setActionLoadingId(null)
     }
   }
 
   // Update Status: Delivered
   const handleMarkDelivered = async (requestId: string) => {
+    if (actionLoadingIdRef.current) return
     try {
+      actionLoadingIdRef.current = requestId
       setActionLoadingId(requestId)
       const { error } = await supabase
         .from("carry_requests")
@@ -422,18 +432,19 @@ export function CarryPage() {
       console.error("[CarryPage] Delivered error:", err)
       toast.error(err.message || "Failed to mark delivered.")
     } finally {
+      actionLoadingIdRef.current = null
       setActionLoadingId(null)
     }
   }
 
-
-
   // Submit Review
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmittingReviewRef.current || isSubmittingReview) return
     if (!user || !reviewDelivery) return
 
     try {
+      isSubmittingReviewRef.current = true
       setIsSubmittingReview(true)
       const targetId = reviewDelivery.assigned_carrier_id || reviewDelivery.requester_id
       const { error } = await supabase.from("reviews").insert({
@@ -454,6 +465,7 @@ export function CarryPage() {
       console.error("[CarryPage] Review submit error:", err)
       toast.error(err.message || "Failed to submit review.")
     } finally {
+      isSubmittingReviewRef.current = false
       setIsSubmittingReview(false)
     }
   }

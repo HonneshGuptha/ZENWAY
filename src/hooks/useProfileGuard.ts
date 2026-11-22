@@ -6,27 +6,47 @@ export function useProfileGuard() {
   const [isModalOpen, setIsModalOpen] = React.useState(false)
   const pendingActionRef = React.useRef<(() => void | Promise<void>) | null>(null)
   const [serviceContext, setServiceContext] = React.useState<string>("this service")
+  const isInFlightRef = React.useRef<boolean>(false)
+
+  const executeActionSafely = React.useCallback(async (action: () => void | Promise<void>) => {
+    if (isInFlightRef.current) {
+      console.warn("[useProfileGuard] Action already in flight, blocked duplicate invocation.")
+      return
+    }
+    isInFlightRef.current = true
+    try {
+      await action()
+    } finally {
+      isInFlightRef.current = false
+    }
+  }, [])
 
   const requireCompleteProfile = React.useCallback(
     (action: () => void | Promise<void>, serviceDesc = "this service"): boolean => {
+      // Synchronous in-flight lock: block duplicate invocations immediately
+      if (isInFlightRef.current) {
+        console.warn("[useProfileGuard] Blocked duplicate execution attempt while action in flight.")
+        return false
+      }
+
       // Administrators are unconditionally exempt
       if (isAdmin) {
-        action()
+        void executeActionSafely(action)
         return true
       }
 
       if (isProfileComplete) {
-        action()
+        void executeActionSafely(action)
         return true
       }
 
       // Incomplete non-admin profile: hold action and open inline completion modal
       setServiceContext(serviceDesc)
-      pendingActionRef.current = action
+      pendingActionRef.current = () => executeActionSafely(action)
       setIsModalOpen(true)
       return false
     },
-    [isAdmin, isProfileComplete]
+    [isAdmin, isProfileComplete, executeActionSafely]
   )
 
   const handleModalSuccess = React.useCallback(async () => {
@@ -41,6 +61,7 @@ export function useProfileGuard() {
   const handleModalClose = React.useCallback(() => {
     setIsModalOpen(false)
     pendingActionRef.current = null
+    isInFlightRef.current = false
   }, [])
 
   return {
@@ -51,5 +72,6 @@ export function useProfileGuard() {
     requireCompleteProfile,
     handleModalSuccess,
     handleModalClose,
+    isInFlightRef,
   }
 }
