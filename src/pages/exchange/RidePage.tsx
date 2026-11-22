@@ -38,6 +38,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
+import { formatReadableDateTime } from "@/utils/formatters"
 import {
   CAMPUS_LOCATION,
   POPULAR_LOCALITIES,
@@ -589,7 +590,7 @@ export function RidePage() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="max-w-6xl mx-auto space-y-6 pt-2 pb-16 px-4 sm:px-6"
+      className="max-w-6xl mx-auto space-y-6 pt-2 pb-28 sm:pb-32 px-4 sm:px-6"
     >
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
@@ -709,6 +710,41 @@ export function RidePage() {
             </div>
           </div>
         )}
+
+        {/* Approved Corridor Quick-Select Chips */}
+        {activeTab === "browse" && approvedHubs.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none pt-1">
+            <span className="text-[11px] text-muted-foreground font-medium shrink-0 mr-1">Corridors:</span>
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer border ${
+                !searchQuery
+                  ? "border-primary bg-primary text-primary-foreground font-semibold"
+                  : "border-border/80 bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              All
+            </button>
+            {approvedHubs.map((hub) => {
+              const isSelected = searchQuery.toLowerCase() === hub.toLowerCase()
+              return (
+                <button
+                  key={hub}
+                  type="button"
+                  onClick={() => setSearchQuery(isSelected ? "" : hub)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer border ${
+                    isSelected
+                      ? "border-primary bg-primary text-primary-foreground font-semibold shadow-2xs"
+                      : "border-border/80 bg-card text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {hub}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* BROWSE TAB */}
@@ -755,7 +791,7 @@ export function RidePage() {
               }}
             />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className={`grid gap-5 ${filteredRides.length === 1 ? 'grid-cols-1 max-w-md' : filteredRides.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-3xl' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
               {filteredRides.map((ride) => {
                 const isDriver = user?.id === ride.driver_id
                 const rideDir = getRideDirection(
@@ -788,7 +824,7 @@ export function RidePage() {
                           </div>
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
                             <Clock className="size-3" />
-                            <span>{new Date(ride.departure_time).toLocaleString()}</span>
+                            <span>{formatReadableDateTime(ride.departure_time)}</span>
                           </div>
                         </div>
 
@@ -926,7 +962,7 @@ export function RidePage() {
                               )}
                             </div>
                             <CardDescription className="text-xs font-mono">
-                              {new Date(ride.departure_time).toLocaleString()}
+                              {formatReadableDateTime(ride.departure_time)}
                             </CardDescription>
                           </div>
                           <StatusBadge status={ride.status} showIcon />
@@ -1084,7 +1120,7 @@ export function RidePage() {
                               )}
                             </div>
                             <CardDescription className="text-xs font-mono">
-                              {req.ride?.departure_time ? new Date(req.ride.departure_time).toLocaleString() : ""}
+                              {req.ride?.departure_time ? formatReadableDateTime(req.ride.departure_time) : ""}
                             </CardDescription>
                           </div>
                           <StatusBadge status={req.status} showIcon />
@@ -1181,8 +1217,8 @@ export function RidePage() {
 
       {/* Publish Carpool Modal */}
       <Dialog open={isPublishModalOpen} onOpenChange={setIsPublishModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden sm:rounded-2xl">
+          <DialogHeader className="p-4 sm:p-5 border-b border-border/60 shrink-0">
             <DialogTitle className="text-base font-semibold">Offer a Campus Carpool</DialogTitle>
             <DialogDescription className="text-xs">
               Publish your drive schedule so students along your route can join.
@@ -1190,19 +1226,22 @@ export function RidePage() {
           </DialogHeader>
 
           {!isVerified ? (
-            <EmptyState
-              variant="unverified"
-              title="Student Verification Required"
-              description="To ensure rider safety on campus, only verified students can offer and publish carpool rides. Upload your student ID to verify."
-              actionLabel="Verify Student ID"
-              onAction={() => {
-                setIsPublishModalOpen(false)
-                navigate("/verify-student")
-              }}
-            />
+            <div className="p-6">
+              <EmptyState
+                variant="unverified"
+                title="Student Verification Required"
+                description="To ensure rider safety on campus, only verified students can offer and publish carpool rides. Upload your student ID to verify."
+                actionLabel="Verify Student ID"
+                onAction={() => {
+                  setIsPublishModalOpen(false)
+                  navigate("/verify-student")
+                }}
+              />
+            </div>
           ) : (
-            <form onSubmit={handlePublishRide} className="space-y-3.5 py-2 text-xs">
-              {/* Segmented Direction Toggle */}
+            <form onSubmit={handlePublishRide} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-3.5 text-xs">
+                {/* Segmented Direction Toggle */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-foreground">Commute Direction</Label>
                 <div className="grid grid-cols-2 p-1 rounded-xl bg-muted/80 border border-border/60 gap-1">
@@ -1539,28 +1578,30 @@ export function RidePage() {
                 className="text-xs min-h-[60px]"
               />
             </div>
+              </div>
 
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsPublishModalOpen(false)}
-                disabled={isSubmittingRide}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={isSubmittingRide}
-                className="gap-1.5 cursor-pointer"
-              >
-                {isSubmittingRide ? <Loader2 className="size-3.5 animate-spin" /> : <Car className="size-3.5" />}
-                <span>Publish Carpool</span>
-              </Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter className="p-4 border-t border-border/60 bg-muted/20 shrink-0 flex flex-row items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsPublishModalOpen(false)}
+                  disabled={isSubmittingRide}
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isSubmittingRide}
+                  className="gap-1.5 cursor-pointer font-semibold"
+                >
+                  {isSubmittingRide ? <Loader2 className="size-3.5 animate-spin" /> : <Car className="size-3.5" />}
+                  <span>Publish Carpool</span>
+                </Button>
+              </DialogFooter>
+            </form>
           )}
         </DialogContent>
       </Dialog>
@@ -1581,7 +1622,7 @@ export function RidePage() {
                 {joiningRide?.origin_name} → {joiningRide?.destination_name}
               </p>
               <p className="text-muted-foreground font-mono">
-                Departure: {joiningRide ? new Date(joiningRide.departure_time).toLocaleString() : ""}
+                Departure: {joiningRide ? formatReadableDateTime(joiningRide.departure_time) : ""}
               </p>
               <p className="font-mono text-primary font-bold">
                 Price: ₹{joiningRide?.price_per_seat} per seat

@@ -23,6 +23,7 @@ import { NotificationsDropdown } from "@/components/notifications/NotificationsD
 import { ZenwayLogo } from "@/components/brand/ZenwayLogo"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "@/context/RouterContext"
+import { getStudentInitials } from "@/utils/formatters"
 
 export type NavTab = "home" | "rent" | "ride" | "carry" | "activity" | "profile"
 
@@ -55,18 +56,8 @@ export function Header({ currentTab, onTabChange }: HeaderProps) {
 
   // Compute clean student initials (e.g. "HO", "PK")
   const userInitials = React.useMemo(() => {
-    if (profile?.full_name) {
-      const parts = profile.full_name.trim().split(/\s+/)
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      }
-      return profile.full_name.slice(0, 2).toUpperCase()
-    }
-    if (user?.email) {
-      return user.email.slice(0, 2).toUpperCase()
-    }
-    return "ST"
-  }, [profile, user])
+    return getStudentInitials(profile?.full_name, user?.email)
+  }, [profile?.full_name, user?.email])
 
   const handleSignOut = async () => {
     try {
@@ -95,8 +86,8 @@ export function Header({ currentTab, onTabChange }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full transition-colors">
-      <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur-md transition-colors duration-200">
+      <div className="mx-auto flex h-16 sm:h-18 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* GROUP 1 (LEFT): Pure brand logo only — zero badge, zero clutter */}
         <button
           type="button"

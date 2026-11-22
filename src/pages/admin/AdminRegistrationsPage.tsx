@@ -188,69 +188,69 @@ export function AdminRegistrationsPage() {
         </Button>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* Metrics Row (Compact Density) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         <div
           onClick={() => setActiveTab("pending")}
-          className={`p-4 rounded-xl border transition-all cursor-pointer bg-card shadow-xs ${
+          className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer bg-card shadow-xs ${
             activeTab === "pending"
               ? "border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/20"
               : "border-border/80 hover:border-border"
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Pending Review</span>
-            <Clock className="size-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-[11px] font-medium text-muted-foreground">Pending Review</span>
+            <Clock className="size-3.5 text-amber-600 dark:text-amber-400" />
           </div>
-          <p className="text-2xl font-bold text-foreground mt-2 font-mono">{pendingCount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-foreground mt-1 font-mono">{pendingCount}</p>
           <span className="text-[10px] text-amber-700 dark:text-amber-300 font-medium">Requires approval</span>
         </div>
 
         <div
           onClick={() => setActiveTab("approved")}
-          className={`p-4 rounded-xl border transition-all cursor-pointer bg-card shadow-xs ${
+          className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer bg-card shadow-xs ${
             activeTab === "approved"
               ? "border-emerald-500/50 bg-emerald-500/5 ring-1 ring-emerald-500/20"
               : "border-border/80 hover:border-border"
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Approved Members</span>
-            <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-[11px] font-medium text-muted-foreground">Approved Members</span>
+            <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <p className="text-2xl font-bold text-foreground mt-2 font-mono">{approvedCount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-foreground mt-1 font-mono">{approvedCount}</p>
           <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium">Login enabled</span>
         </div>
 
         <div
           onClick={() => setActiveTab("rejected")}
-          className={`p-4 rounded-xl border transition-all cursor-pointer bg-card shadow-xs ${
+          className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer bg-card shadow-xs ${
             activeTab === "rejected"
               ? "border-destructive/50 bg-destructive/5 ring-1 ring-destructive/20"
               : "border-border/80 hover:border-border"
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Rejected</span>
-            <XCircle className="size-4 text-destructive" />
+            <span className="text-[11px] font-medium text-muted-foreground">Rejected</span>
+            <XCircle className="size-3.5 text-destructive" />
           </div>
-          <p className="text-2xl font-bold text-foreground mt-2 font-mono">{rejectedCount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-foreground mt-1 font-mono">{rejectedCount}</p>
           <span className="text-[10px] text-destructive font-medium">Access blocked</span>
         </div>
 
         <div
           onClick={() => setActiveTab("all")}
-          className={`p-4 rounded-xl border transition-all cursor-pointer bg-card shadow-xs ${
+          className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer bg-card shadow-xs ${
             activeTab === "all"
               ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
               : "border-border/80 hover:border-border"
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Total Registered</span>
-            <Filter className="size-4 text-primary" />
+            <span className="text-[11px] font-medium text-muted-foreground">Total Registered</span>
+            <Filter className="size-3.5 text-primary" />
           </div>
-          <p className="text-2xl font-bold text-foreground mt-2 font-mono">{totalCount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-foreground mt-1 font-mono">{totalCount}</p>
           <span className="text-[10px] text-muted-foreground font-medium">All accounts</span>
         </div>
       </div>
@@ -401,7 +401,7 @@ export function AdminRegistrationsPage() {
                           size="sm"
                           disabled={isProcessing}
                           onClick={() => handleApprove(student)}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 px-3 gap-1.5 cursor-pointer shadow-xs"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-9 sm:h-8 px-3.5 gap-1.5 cursor-pointer shadow-xs active:scale-[0.98]"
                         >
                           {isProcessing ? (
                             <Loader2 className="size-3.5 animate-spin" />
@@ -419,7 +419,7 @@ export function AdminRegistrationsPage() {
                             setRejectDialogUser(student)
                             setRejectionReason("")
                           }}
-                          className="border-destructive/30 text-destructive hover:bg-destructive/10 text-xs h-8 px-3 gap-1.5 cursor-pointer"
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10 text-xs h-9 sm:h-8 px-3.5 gap-1.5 cursor-pointer active:scale-[0.98]"
                         >
                           <XCircle className="size-3.5" />
                           <span>Reject</span>
@@ -432,7 +432,7 @@ export function AdminRegistrationsPage() {
                         size="sm"
                         disabled={isProcessing}
                         onClick={() => handleApprove(student)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 px-3 gap-1.5 cursor-pointer"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-9 sm:h-8 px-3.5 gap-1.5 cursor-pointer active:scale-[0.98]"
                       >
                         <CheckCircle2 className="size-3.5" />
                         <span>Reconsider & Approve</span>

@@ -8,6 +8,7 @@ import { ZenwayLogo } from "@/components/brand/ZenwayLogo"
 import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { MascotLoader } from "@/components/ui/MascotLoader"
 import { EntryIntro } from "@/components/ui/EntryIntro"
+import { hasSeenIntro } from "@/components/ui/mascotConstants"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "@/context/RouterContext"
 import { pageTransitionVariants } from "@/lib/motion"
@@ -57,13 +58,20 @@ function App() {
   const { currentPath, currentTab, onTabChange } = useRouter()
   const [showIntro, setShowIntro] = React.useState(() => {
     try {
-      return sessionStorage.getItem("zenway_intro_seen") !== "true"
+      return !hasSeenIntro()
     } catch {
       return false
     }
   })
 
-  // 1. Session-gated intro animation plays FIRST on site entry (never show MascotLoader before EntryIntro)
+  // Optional: Listen for manual replay requests from UI
+  React.useEffect(() => {
+    const handleReplay = () => setShowIntro(true)
+    window.addEventListener("zenway:replay-intro", handleReplay)
+    return () => window.removeEventListener("zenway:replay-intro", handleReplay)
+  }, [])
+
+  // 1. Persistent first-visit intro animation plays FIRST on site entry (never show MascotLoader before EntryIntro)
   if (showIntro) {
     return <EntryIntro onComplete={() => setShowIntro(false)} />
   }

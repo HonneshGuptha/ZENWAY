@@ -383,7 +383,7 @@ export function VerifyStudentPage() {
                   <span>Data Protection & Privacy Notice</span>
                 </div>
                 <p>
-                  Documents are stored encrypted in a private, non-public bucket (`student-ids`). They are solely accessible to you and authorized campus administrators for verification review.
+                  Documents are stored securely in a private, non-public bucket (`student-ids`). They are solely accessible to you and authorized campus administrators for verification review.
                 </p>
               </div>
             </CardContent>

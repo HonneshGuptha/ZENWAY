@@ -152,7 +152,7 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="max-w-6xl mx-auto space-y-6 pt-2 pb-16 px-4 sm:px-6"
+      className="max-w-6xl mx-auto space-y-6 pt-2 pb-28 sm:pb-32 px-4 sm:px-6"
     >
       {/* 1. PERSONALIZED CAMPUS HEADER */}
       <motion.div
@@ -326,11 +326,20 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
             whileHover={{ y: -3 }}
             whileTap={{ scale: 0.99 }}
             onClick={() => onNavigate("rent")}
-            className="group cursor-pointer rounded-3xl border border-border/80 bg-card p-6 flex flex-col justify-between hover:border-[var(--accent-primary)]/50 transition-all shadow-xs relative overflow-hidden"
+            className="group cursor-pointer rounded-3xl border border-border/80 bg-card p-6 flex flex-col justify-between hover:border-primary/50 transition-all shadow-xs relative overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            tabIndex={0}
+            role="button"
+            aria-label="Rent a vehicle from peers"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                onNavigate("rent")
+              }
+            }}
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="size-12 rounded-2xl bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] flex items-center justify-center group-hover:scale-105 transition-transform">
+                <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center group-hover:scale-105 transition-transform">
                   <KeyRound className="size-6" />
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-secondary text-foreground">
@@ -339,7 +348,7 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
               </div>
 
               <div>
-                <h3 className="font-heading text-xl font-bold text-foreground group-hover:text-[var(--accent-primary)] transition-colors">
+                <h3 className="font-heading text-xl font-bold text-foreground group-hover:text-primary transition-colors">
                   Rent a Vehicle
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
@@ -350,7 +359,7 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
 
             <div className="pt-6 flex items-center justify-between border-t border-border/60 mt-4">
               <span className="text-xs font-medium text-foreground">Explore available rides</span>
-              <div className="size-8 rounded-full bg-[var(--accent-primary)] text-[var(--bg-surface)] flex items-center justify-center group-hover:translate-x-1 transition-transform">
+              <div className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center group-hover:translate-x-1 transition-transform">
                 <ArrowRight className="size-4" />
               </div>
             </div>
@@ -361,11 +370,20 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
             whileHover={{ y: -3 }}
             whileTap={{ scale: 0.99 }}
             onClick={() => onNavigate("ride")}
-            className="group cursor-pointer rounded-3xl border border-border/80 bg-card p-6 flex flex-col justify-between hover:border-[var(--text-primary)]/50 transition-all shadow-xs relative overflow-hidden"
+            className="group cursor-pointer rounded-3xl border border-border/80 bg-card p-6 flex flex-col justify-between hover:border-primary/50 transition-all shadow-xs relative overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            tabIndex={0}
+            role="button"
+            aria-label="Share a ride carpool"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                onNavigate("ride")
+              }
+            }}
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="size-12 rounded-2xl bg-[var(--text-primary)]/10 text-foreground flex items-center justify-center group-hover:scale-105 transition-transform">
+                <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center group-hover:scale-105 transition-transform">
                   <Car className="size-6" />
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-secondary text-foreground">
@@ -385,7 +403,7 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
 
             <div className="pt-6 flex items-center justify-between border-t border-border/60 mt-4">
               <span className="text-xs font-medium text-foreground">Find or post route</span>
-              <div className="size-8 rounded-full bg-foreground text-background flex items-center justify-center group-hover:translate-x-1 transition-transform">
+              <div className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center group-hover:translate-x-1 transition-transform">
                 <ArrowRight className="size-4" />
               </div>
             </div>
@@ -396,11 +414,20 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
             whileHover={{ y: -3 }}
             whileTap={{ scale: 0.99 }}
             onClick={() => onNavigate("carry")}
-            className="group cursor-pointer rounded-3xl border border-border/80 bg-card p-6 flex flex-col justify-between hover:border-[var(--accent-secondary)]/70 transition-all shadow-xs relative overflow-hidden"
+            className="group cursor-pointer rounded-3xl border border-border/80 bg-card p-6 flex flex-col justify-between hover:border-primary/50 transition-all shadow-xs relative overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            tabIndex={0}
+            role="button"
+            aria-label="Carry and deliver campus items"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                onNavigate("carry")
+              }
+            }}
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="size-12 rounded-2xl bg-[var(--accent-secondary)]/25 text-foreground flex items-center justify-center group-hover:scale-105 transition-transform">
+                <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center group-hover:scale-105 transition-transform">
                   <Package className="size-6" />
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-secondary text-foreground">
@@ -420,7 +447,7 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
 
             <div className="pt-6 flex items-center justify-between border-t border-border/60 mt-4">
               <span className="text-xs font-medium text-foreground">Request delivery</span>
-              <div className="size-8 rounded-full bg-secondary text-foreground flex items-center justify-center group-hover:translate-x-1 transition-transform">
+              <div className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center group-hover:translate-x-1 transition-transform">
                 <ArrowRight className="size-4" />
               </div>
             </div>
@@ -433,10 +460,19 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
         {/* UPI Payment Status */}
         <div
           onClick={() => onNavigate("profile")}
-          className="rounded-2xl border border-border/80 bg-card/70 p-4 flex items-center justify-between cursor-pointer hover:border-primary/40 transition-colors shadow-2xs"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              onNavigate("profile")
+            }
+          }}
+          tabIndex={0}
+          role="button"
+          aria-label="Manage UPI payment settings"
+          className="rounded-2xl border border-border/80 bg-card/70 p-4 flex items-center justify-between cursor-pointer hover:border-primary/40 transition-colors shadow-2xs outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[56px]"
         >
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <div className="size-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
               <QrCode className="size-5" />
             </div>
             <div>
@@ -448,16 +484,25 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
               </div>
             </div>
           </div>
-          <ChevronRight className="size-4 text-muted-foreground" />
+          <ChevronRight className="size-4 text-muted-foreground shrink-0" />
         </div>
 
         {/* Active Activity Hub */}
         <div
           onClick={() => onNavigate("activity")}
-          className="rounded-2xl border border-border/80 bg-card/70 p-4 flex items-center justify-between cursor-pointer hover:border-primary/40 transition-colors shadow-2xs"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              onNavigate("activity")
+            }
+          }}
+          tabIndex={0}
+          role="button"
+          aria-label="View exchange activity and requests"
+          className="rounded-2xl border border-border/80 bg-card/70 p-4 flex items-center justify-between cursor-pointer hover:border-primary/40 transition-colors shadow-2xs outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[56px]"
         >
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Activity className="size-5" />
             </div>
             <div>
@@ -465,16 +510,25 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
               <div className="text-[11px] text-muted-foreground">Requests & Bookings</div>
             </div>
           </div>
-          <ChevronRight className="size-4 text-muted-foreground" />
+          <ChevronRight className="size-4 text-muted-foreground shrink-0" />
         </div>
 
         {/* Verified Student Standing */}
         <div
           onClick={() => navigate("/verification-status")}
-          className="rounded-2xl border border-border/80 bg-card/70 p-4 flex items-center justify-between cursor-pointer hover:border-primary/40 transition-colors shadow-2xs"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              navigate("/verification-status")
+            }
+          }}
+          tabIndex={0}
+          role="button"
+          aria-label="View campus verification standing"
+          className="rounded-2xl border border-border/80 bg-card/70 p-4 flex items-center justify-between cursor-pointer hover:border-primary/40 transition-colors shadow-2xs outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[56px]"
         >
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-[var(--accent-secondary)]/25 text-foreground flex items-center justify-center">
+            <div className="size-10 rounded-xl bg-[var(--accent-secondary)]/25 text-foreground flex items-center justify-center shrink-0">
               <ShieldCheck className="size-5" />
             </div>
             <div>
@@ -482,13 +536,13 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
               <div className="text-[11px] text-muted-foreground">5.0 ★ Standing</div>
             </div>
           </div>
-          <ChevronRight className="size-4 text-muted-foreground" />
+          <ChevronRight className="size-4 text-muted-foreground shrink-0" />
         </div>
 
         {/* Direct Landmark Handoff */}
-        <div className="rounded-2xl border border-border/80 bg-card/70 p-4 flex items-center justify-between shadow-2xs">
+        <div className="rounded-2xl border border-border/80 bg-card/70 p-4 flex items-center justify-between shadow-2xs min-h-[56px]">
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-secondary text-foreground flex items-center justify-center">
+            <div className="size-10 rounded-xl bg-secondary text-foreground flex items-center justify-center shrink-0">
               <Navigation className="size-5" />
             </div>
             <div>
@@ -496,7 +550,7 @@ export function AuthenticatedHome({ onNavigate }: AuthenticatedHomeProps) {
               <div className="text-[11px] text-muted-foreground">Hostel & Main Gates</div>
             </div>
           </div>
-          <CheckCircle2 className="size-4 text-emerald-500" />
+          <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
         </div>
       </motion.div>
     </motion.div>

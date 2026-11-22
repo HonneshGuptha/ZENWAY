@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { getStudentInitials } from "@/utils/formatters"
 import {
   User,
   ShieldCheck,
@@ -192,18 +194,25 @@ export function StudentProfilePage() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="max-w-3xl mx-auto space-y-6 pt-2 pb-12"
+      className="max-w-3xl mx-auto space-y-6 pt-2 pb-28 sm:pb-32 px-4 sm:px-0"
     >
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/60">
-        <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
-            Student Profile
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            {profile?.university_name ? `${(profile?.university_name || "").trim()} • ` : ""}
-            Manage your campus credentials and account preferences
-          </p>
+      {/* Header with Avatar & Status */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
+        <div className="flex items-center gap-3.5">
+          <Avatar className="size-12 ring-2 ring-border shadow-xs shrink-0">
+            <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+              {getStudentInitials(profile?.full_name || fullName, user?.email)}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
+              {profile?.full_name || "Student Profile"}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              {profile?.university_name ? `${(profile?.university_name || "").trim()} • ` : ""}
+              Manage your campus credentials and account preferences
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -267,6 +276,44 @@ export function StudentProfilePage() {
           <AlertCircle className="size-4" />
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
+      )}
+
+      {/* Verification Status Advisory Card */}
+      {latestVerification?.status === "rejected" && (
+        <Alert variant="destructive" className="border-destructive/40 bg-destructive/10 text-foreground text-xs p-4 rounded-2xl">
+          <ShieldAlert className="size-5 text-destructive shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-semibold text-destructive">Student ID Verification Rejected</p>
+            {latestVerification.rejection_reason && (
+              <p className="text-muted-foreground">
+                <span className="font-semibold text-foreground">Admin Feedback: </span>
+                {latestVerification.rejection_reason}
+              </p>
+            )}
+            <div className="pt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate("/verify-student")}
+                className="h-8 text-xs font-semibold border-destructive/30 hover:bg-destructive/10 cursor-pointer"
+              >
+                Re-submit College ID
+              </Button>
+            </div>
+          </div>
+        </Alert>
+      )}
+
+      {isPending && (
+        <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-xs flex items-start gap-3">
+          <Clock className="size-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <p className="font-semibold text-amber-900 dark:text-amber-200">Official Student ID Under Campus Review</p>
+            <p className="text-muted-foreground leading-relaxed">
+              Your credentials are being reviewed by verified campus administrators (typical turnaround 12–24 business hours). You will receive an in-app alert upon approval.
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Refero.design Quick Metrics Overview */}
@@ -384,7 +431,16 @@ export function StudentProfilePage() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="prof-phone">WhatsApp & Calling Phone</Label>
-                  <span className="text-[11px] text-muted-foreground font-medium">10-Digit Mobile</span>
+                  <span className="text-[11px] text-muted-foreground font-medium">
+                    {phoneNumber.length === 10 ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold inline-flex items-center gap-1">
+                        <CheckCircle2 className="size-3" />
+                        Valid 10-Digit Mobile
+                      </span>
+                    ) : (
+                      "10-Digit Mobile"
+                    )}
+                  </span>
                 </div>
                 <div className="relative flex items-center">
                   <div className="absolute left-3 flex items-center gap-1.5 pointer-events-none select-none text-muted-foreground">
@@ -402,8 +458,11 @@ export function StudentProfilePage() {
                       setPhoneNumber(digitsOnly.slice(0, 10))
                     }}
                     disabled={isSaving}
-                    className="pl-16 h-10 text-sm font-mono tracking-wide"
+                    className="pl-16 pr-9 h-10 text-sm font-mono tracking-wide"
                   />
+                  {phoneNumber.length === 10 && (
+                    <CheckCircle2 className="size-4 text-emerald-500 absolute right-3 pointer-events-none" />
+                  )}
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   Shared securely via WhatsApp & Call only with confirmed exchange partners.
@@ -411,10 +470,24 @@ export function StudentProfilePage() {
               </div>
             </div>
 
-            <div className="space-y-1.5 p-3 rounded-xl border border-border/60 bg-muted/20">
+            <div className="space-y-1.5 p-3.5 rounded-2xl border border-border/80 bg-muted/20">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label htmlFor="prof-upi" className="font-semibold text-foreground">UPI ID</Label>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="prof-upi" className="font-semibold text-foreground">UPI ID</Label>
+                    {upiId.trim() && (
+                      /^[a-zA-Z0-9._-]{2,32}@[a-zA-Z]{2,15}$/.test(upiId.trim()) ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          <CheckCircle2 className="size-2.5" />
+                          Valid Format
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                          Expected format: handle@bank
+                        </span>
+                      )
+                    )}
+                  </div>
                   <p className="text-[11px] text-muted-foreground">
                     {profile?.upi_id ? `Linked: ${profile?.upi_id} • ` : ""}Used for peer settlements and direct UPI QR payments in RIDE and RENT.
                   </p>
@@ -425,7 +498,7 @@ export function StudentProfilePage() {
                   variant="outline"
                   onClick={() => handleSaveUpi()}
                   disabled={isSaving || isSavingUpi}
-                  className="h-7 px-3 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer gap-1.5"
+                  className="h-8 px-3 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer gap-1.5"
                 >
                   {isSavingUpi ? (
                     <>
@@ -448,9 +521,12 @@ export function StudentProfilePage() {
                   value={upiId}
                   onChange={(e) => setUpiId(e.target.value)}
                   disabled={isSaving || isSavingUpi}
-                  className="pl-9 h-10 text-sm"
+                  className="pl-9 pr-9 h-10 text-sm font-mono"
                 />
                 <QrCode className="size-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
+                {/^[a-zA-Z0-9._-]{2,32}@[a-zA-Z]{2,15}$/.test(upiId.trim()) && (
+                  <CheckCircle2 className="size-4 text-emerald-500 absolute right-3 top-3 pointer-events-none" />
+                )}
               </div>
             </div>
 

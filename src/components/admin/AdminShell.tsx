@@ -42,7 +42,19 @@ const adminNavItems = [
  */
 export function AdminShell({ children, currentSection }: AdminShellProps) {
   const { user, profile, adminSignOut } = useAuth()
-  const { navigate } = useRouter()
+  const { currentPath, navigate } = useRouter()
+
+  // Derive active section reliably from current URL path with currentSection fallback
+  const activeSection = React.useMemo(() => {
+    if (currentPath.startsWith("/admin/disputes")) return "disputes"
+    if (currentPath.startsWith("/admin/verifications")) return "verifications"
+    if (currentPath.startsWith("/admin/moderation")) return "moderation"
+    if (currentPath.startsWith("/admin/users")) return "users"
+    if (currentPath.startsWith("/admin/registrations")) return "registrations"
+    if (currentPath.startsWith("/admin/reports")) return "reports"
+    if (currentPath.startsWith("/admin/dashboard")) return "dashboard"
+    return currentSection || "dashboard"
+  }, [currentPath, currentSection])
 
   const handleSignOut = async () => {
     try {
@@ -157,7 +169,7 @@ export function AdminShell({ children, currentSection }: AdminShellProps) {
             <div className="flex items-center gap-1">
               {adminNavItems.map((item) => {
                 const Icon = item.icon
-                const isActive = currentSection === item.id
+                const isActive = activeSection === item.id
                 return (
                   <button
                     key={item.id}

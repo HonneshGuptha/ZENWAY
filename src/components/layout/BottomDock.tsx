@@ -31,7 +31,7 @@ export function BottomDock({ currentTab, onTabChange }: BottomDockProps) {
     <div
       role="navigation"
       aria-label="Student Navigation Dock"
-      className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-[95vw] rounded-full border border-border/80 zen-glass px-2.5 py-2 shadow-2xl flex items-center gap-1.5 select-none"
+      className="fixed bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-[95vw] rounded-full border border-border/80 zen-glass px-2 sm:px-2.5 py-1.5 sm:py-2 shadow-xl flex items-center gap-1 sm:gap-1.5 select-none mb-[env(safe-area-inset-bottom)]"
     >
       {dockItems.map((item) => {
         const Icon = item.icon

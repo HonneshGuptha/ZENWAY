@@ -31,9 +31,12 @@ import {
   MessageSquare,
   ShieldAlert,
   Navigation,
+  Clock,
+  X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
+import { formatReadableDateTime } from "@/utils/formatters"
 import { LocationPickerModal } from "@/components/location/LocationPickerModal"
 import { CampusMap } from "@/components/location/CampusMap"
 import { StudentPublicProfileModal } from "@/components/profile/StudentPublicProfileModal"
@@ -448,7 +451,7 @@ export function CarryPage() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="max-w-6xl mx-auto space-y-6 pt-2 pb-16 px-4 sm:px-6"
+      className="max-w-6xl mx-auto space-y-6 pt-2 pb-28 sm:pb-32 px-4 sm:px-6"
     >
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
@@ -584,7 +587,7 @@ export function CarryPage() {
               }}
             />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className={`grid gap-5 ${filteredRequests.length === 1 ? 'grid-cols-1 max-w-md' : filteredRequests.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-3xl' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
               {filteredRequests.map((req) => {
                 const isRequester = user?.id === req.requester_id
                 return (
@@ -607,27 +610,39 @@ export function CarryPage() {
                       {/* Reward fee */}
                       <div className="flex items-baseline justify-between pt-1">
                         <div>
-                          <span className="text-lg font-bold text-foreground">₹{req.reward_amount}</span>
+                          <span className="text-lg font-bold font-mono text-foreground">₹{req.reward_amount}</span>
                           <span className="text-[11px] text-muted-foreground font-medium"> peer reward</span>
                         </div>
-                        {req.needed_by && (
-                          <span className="text-[10px] font-mono text-muted-foreground">
-                            Before {new Date(req.needed_by).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {req.needed_by ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-700 dark:text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                            <Clock className="size-2.5" />
+                            <span>Needed by {new Date(req.needed_by).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                           </span>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground font-mono">Flexible timing</span>
                         )}
                       </div>
 
                       {/* Route */}
-                      <div className="space-y-1 bg-muted/30 p-2.5 rounded-lg border border-border/50 text-[11px]">
+                      <div className="space-y-1.5 bg-muted/40 p-2.5 rounded-xl border border-border/60 text-[11px]">
                         <div className="flex items-center gap-1.5 text-muted-foreground truncate">
-                          <span className="font-semibold text-foreground">From:</span>
+                          <MapPin className="size-3 text-primary shrink-0" />
+                          <span className="font-semibold text-foreground shrink-0">Pickup:</span>
                           <span className="truncate">{req.pickup_location}</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-muted-foreground truncate">
-                          <span className="font-semibold text-foreground">To:</span>
+                          <Navigation className="size-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span className="font-semibold text-foreground shrink-0">Drop-off:</span>
                           <span className="truncate">{req.delivery_location}</span>
                         </div>
                       </div>
+
+                      {req.needed_by && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono">
+                          <Clock className="size-3 text-primary shrink-0" />
+                          <span>Needed by: {formatReadableDateTime(req.needed_by)}</span>
+                        </div>
+                      )}
 
                       {/* Requester Info & Profile */}
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/50">
@@ -926,8 +941,8 @@ export function CarryPage() {
 
       {/* Create Delivery Modal */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden sm:rounded-2xl">
+          <DialogHeader className="p-4 sm:p-5 border-b border-border/60 shrink-0">
             <DialogTitle className="text-base font-semibold">Request Peer Delivery</DialogTitle>
             <DialogDescription className="text-xs">
               Post an item that needs to be transported between campus locations.
@@ -935,165 +950,204 @@ export function CarryPage() {
           </DialogHeader>
 
           {!isVerified ? (
-            <EmptyState
-              variant="unverified"
-              title="Student Verification Required"
-              description="To prevent package loss and ensure campus trust, only verified students can request or carry peer packages. Upload your student ID to verify."
-              actionLabel="Verify Student ID"
-              onAction={() => {
-                setIsCreateModalOpen(false)
-                navigate("/verify-student")
-              }}
-            />
+            <div className="p-6">
+              <EmptyState
+                variant="unverified"
+                title="Student Verification Required"
+                description="To prevent package loss and ensure campus trust, only verified students can request or carry peer packages. Upload your student ID to verify."
+                actionLabel="Verify Student ID"
+                onAction={() => {
+                  setIsCreateModalOpen(false)
+                  navigate("/verify-student")
+                }}
+              />
+            </div>
           ) : (
-            <form onSubmit={handleCreateRequest} className="space-y-3 py-2 text-xs">
-            <div className="space-y-1">
-              <Label htmlFor="c-title" className="text-xs">Item Title</Label>
-              <Input
-                id="c-title"
-                placeholder="e.g. Organic Chemistry Textbook & Notes"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                disabled={isSubmittingRequest}
-                className="h-9 text-xs"
-                required
-              />
-            </div>
+            <form onSubmit={handleCreateRequest} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-3.5 text-xs">
+                <div className="space-y-1">
+                  <Label htmlFor="c-title" className="text-xs font-semibold">Item Title *</Label>
+                  <Input
+                    id="c-title"
+                    placeholder="e.g. Organic Chemistry Textbook & Notes"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    disabled={isSubmittingRequest}
+                    className="h-9 text-xs"
+                    required
+                  />
+                </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="c-size" className="text-xs">Package Size</Label>
-                <select
-                  id="c-size"
-                  value={newSize}
-                  onChange={(e) => setNewSize(e.target.value as any)}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
-                >
-                  <option value="envelope">Envelope / Doc</option>
-                  <option value="small_box">Small Box</option>
-                  <option value="backpack">Backpack / Bag</option>
-                  <option value="medium_box">Medium Box</option>
-                </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="c-size" className="text-xs font-semibold">Package Size *</Label>
+                    <select
+                      id="c-size"
+                      value={newSize}
+                      onChange={(e) => setNewSize(e.target.value as any)}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+                    >
+                      <option value="envelope">Envelope / Doc</option>
+                      <option value="small_box">Small Box</option>
+                      <option value="backpack">Backpack / Bag</option>
+                      <option value="medium_box">Medium Box</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="c-fee" className="text-xs font-semibold">Reward Fee (₹) *</Label>
+                      <span className="text-[10px] text-muted-foreground font-mono">Peer UPI</span>
+                    </div>
+                    <Input
+                      id="c-fee"
+                      type="number"
+                      placeholder="₹50"
+                      value={newFee}
+                      onChange={(e) => setNewFee(e.target.value)}
+                      disabled={isSubmittingRequest}
+                      className="h-9 text-xs font-mono"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="c-pickup" className="text-xs font-semibold">Pickup Location *</Label>
+                    <button
+                      type="button"
+                      onClick={() => setLocationPickerTarget("pickup")}
+                      className="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <MapPin className="size-3" />
+                      <span>Choose on Map</span>
+                    </button>
+                  </div>
+                  <Input
+                    id="c-pickup"
+                    placeholder="e.g. MSRUAS Central Library / Science Block"
+                    value={newPickup}
+                    onChange={(e) => setNewPickup(e.target.value)}
+                    disabled={isSubmittingRequest}
+                    className="h-9 text-xs"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="c-delivery" className="text-xs font-semibold">Delivery Destination *</Label>
+                    <button
+                      type="button"
+                      onClick={() => setLocationPickerTarget("delivery")}
+                      className="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <MapPin className="size-3" />
+                      <span>Choose on Map</span>
+                    </button>
+                  </div>
+                  <Input
+                    id="c-delivery"
+                    placeholder="e.g. West Campus Dorm Block B Lobby"
+                    value={newDelivery}
+                    onChange={(e) => setNewDelivery(e.target.value)}
+                    disabled={isSubmittingRequest}
+                    className="h-9 text-xs"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="c-deadline" className="text-xs font-semibold">Delivery Deadline (Optional)</Label>
+                  <Input
+                    id="c-deadline"
+                    type="datetime-local"
+                    value={newDeadline}
+                    onChange={(e) => setNewDeadline(e.target.value)}
+                    disabled={isSubmittingRequest}
+                    className="h-9 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="c-photo" className="text-xs font-semibold">Item Photo (Optional)</Label>
+                    <span className="text-[10px] text-muted-foreground font-mono">JPG, PNG, WEBP • Max 5MB</span>
+                  </div>
+                  {photoFile ? (
+                    <div className="flex items-center gap-2.5 p-2 rounded-lg bg-muted/50 border border-border/80">
+                      <div className="size-10 rounded-md bg-muted overflow-hidden shrink-0 border border-border">
+                        <img
+                          src={URL.createObjectURL(photoFile)}
+                          alt="Package preview"
+                          className="size-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">{photoFile.name}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono">
+                          {(photoFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPhotoFile(null)}
+                        className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive cursor-pointer"
+                      >
+                        <X className="size-3.5" />
+                        <span className="sr-only">Remove photo</span>
+                      </Button>
+                    </div>
+                  ) : (
+                    <Input
+                      id="c-photo"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                      disabled={isSubmittingRequest}
+                      className="h-9 text-xs cursor-pointer"
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="c-desc" className="text-xs font-semibold">Notes for Carrier (Optional)</Label>
+                  <Textarea
+                    id="c-desc"
+                    placeholder="Handle with care. Call when reaching lobby."
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    disabled={isSubmittingRequest}
+                    className="text-xs min-h-[60px]"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="c-fee" className="text-xs">Reward Fee (₹)</Label>
-                <Input
-                  id="c-fee"
-                  type="number"
-                  placeholder="₹50"
-                  value={newFee}
-                  onChange={(e) => setNewFee(e.target.value)}
+              <DialogFooter className="p-4 border-t border-border/60 bg-muted/20 shrink-0 flex flex-row items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCreateModalOpen(false)}
                   disabled={isSubmittingRequest}
-                  className="h-9 text-xs font-mono"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="c-pickup" className="text-xs">Pickup Location *</Label>
-                <button
-                  type="button"
-                  onClick={() => setLocationPickerTarget("pickup")}
-                  className="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                  className="cursor-pointer"
                 >
-                  <MapPin className="size-3" />
-                  <span>Choose on Map</span>
-                </button>
-              </div>
-              <Input
-                id="c-pickup"
-                placeholder="e.g. MSRUAS Central Library / Science Block"
-                value={newPickup}
-                onChange={(e) => setNewPickup(e.target.value)}
-                disabled={isSubmittingRequest}
-                className="h-9 text-xs"
-                required
-              />
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="c-delivery" className="text-xs">Delivery Destination *</Label>
-                <button
-                  type="button"
-                  onClick={() => setLocationPickerTarget("delivery")}
-                  className="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isSubmittingRequest}
+                  className="gap-1.5 cursor-pointer font-semibold"
                 >
-                  <MapPin className="size-3" />
-                  <span>Choose on Map</span>
-                </button>
-              </div>
-              <Input
-                id="c-delivery"
-                placeholder="e.g. West Campus Dorm Block B Lobby"
-                value={newDelivery}
-                onChange={(e) => setNewDelivery(e.target.value)}
-                disabled={isSubmittingRequest}
-                className="h-9 text-xs"
-                required
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="c-deadline" className="text-xs">Delivery Deadline (Optional)</Label>
-              <Input
-                id="c-deadline"
-                type="datetime-local"
-                value={newDeadline}
-                onChange={(e) => setNewDeadline(e.target.value)}
-                disabled={isSubmittingRequest}
-                className="h-9 text-xs"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="c-photo" className="text-xs">Item Photo (Optional)</Label>
-              <Input
-                id="c-photo"
-                type="file"
-                accept="image/*"
-                onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                disabled={isSubmittingRequest}
-                className="h-9 text-xs cursor-pointer"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="c-desc" className="text-xs">Notes for Carrier</Label>
-              <Textarea
-                id="c-desc"
-                placeholder="Handle with care. Call when reaching lobby."
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                disabled={isSubmittingRequest}
-                className="text-xs min-h-[60px]"
-              />
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsCreateModalOpen(false)}
-                disabled={isSubmittingRequest}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={isSubmittingRequest}
-                className="gap-1.5 cursor-pointer"
-              >
-                {isSubmittingRequest ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-                <span>Post Request</span>
-              </Button>
-            </DialogFooter>
-          </form>
+                  {isSubmittingRequest ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+                  <span>Post Request</span>
+                </Button>
+              </DialogFooter>
+            </form>
           )}
         </DialogContent>
       </Dialog>

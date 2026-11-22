@@ -25,6 +25,7 @@ import type { NavTab } from "@/components/layout/Header"
 import { useRouter } from "@/context/RouterContext"
 import { useAuth } from "@/context/AuthContext"
 import { EASE_APPLE, DURATION } from "@/lib/motion"
+import { clearIntroSeen } from "@/components/ui/mascotConstants"
 
 interface HomeLandingProps {
   onNavigate: (tab: NavTab) => void
@@ -141,7 +142,7 @@ export function HomeLanding({ onNavigate }: HomeLandingProps) {
               variants={heroItemVariants}
               className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto font-normal"
             >
-              Rent bicycles and scooters from verified classmates, split rides on daily commutes, and coordinate campus deliveries—with automated approvals and direct WhatsApp handoffs.
+              Rent bicycles and scooters from verified classmates, split rides on daily commutes, and coordinate campus deliveries—with direct peer-to-peer UPI settlement and secure student contact handoffs.
             </motion.p>
 
             {/* High-Contrast Action CTAs */}
@@ -178,8 +179,8 @@ export function HomeLanding({ onNavigate }: HomeLandingProps) {
               className="grid grid-cols-3 gap-6 pt-6 max-w-lg mx-auto border-t border-border/50 text-left"
             >
               <div className="space-y-0.5">
-                <span className="font-mono text-xl sm:text-2xl font-bold text-foreground">100%</span>
-                <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight">Student Verified</p>
+                <span className="font-mono text-xl sm:text-2xl font-bold text-foreground">Verified</span>
+                <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight">Student Access Only</p>
               </div>
               <div className="space-y-0.5">
                 <span className="font-mono text-xl sm:text-2xl font-bold text-primary">3 Modes</span>
@@ -187,7 +188,7 @@ export function HomeLanding({ onNavigate }: HomeLandingProps) {
               </div>
               <div className="space-y-0.5">
                 <span className="font-mono text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">Direct</span>
-                <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight">WhatsApp Handoff</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight">Peer UPI &amp; Handoff</p>
               </div>
             </motion.div>
           </div>
@@ -295,7 +296,7 @@ export function HomeLanding({ onNavigate }: HomeLandingProps) {
                   Campus E-Scooters
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-muted/80 px-3 py-1.5 rounded-lg text-foreground border border-border/60">
-                  <Car className="size-3.5 text-blue-500" />
+                  <Car className="size-3.5 text-primary" />
                   Shared Cars
                 </span>
               </div>
@@ -460,7 +461,7 @@ export function HomeLanding({ onNavigate }: HomeLandingProps) {
                   <span>Privacy-First Architecture</span>
                 </div>
                 <span className="font-mono text-xs font-bold text-muted-foreground">
-                  PostgreSQL RPC Definer
+                  Campus Privacy &amp; Access Control
                 </span>
               </div>
 
@@ -469,7 +470,7 @@ export function HomeLanding({ onNavigate }: HomeLandingProps) {
                   Anti-Scraping Contact Protection
                 </h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Student phone numbers and WhatsApp links remain strictly encrypted and confidential until an exchange request is formally accepted by the owner. No scrapers, no spam, and zero public data leaks.
+                  Student phone numbers and WhatsApp links remain confidential and protected by backend privacy controls until an exchange request is formally accepted by the owner. No scrapers, no spam, and zero public data leaks.
                 </p>
               </div>
 
@@ -616,7 +617,7 @@ export function HomeLanding({ onNavigate }: HomeLandingProps) {
             </div>
             <div className="pt-2 flex items-center gap-2 text-xs text-muted-foreground font-medium border-t border-border/50">
               <Phone className="size-3.5 text-primary" />
-              <span>Anti-scraping RPC protection</span>
+              <span>Protected contact privacy</span>
             </div>
           </motion.div>
         </div>
@@ -952,8 +953,19 @@ export function HomeLanding({ onNavigate }: HomeLandingProps) {
             <button type="button" onClick={() => navigate("/terms")} className="hover:text-foreground cursor-pointer">
               Terms
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                clearIntroSeen()
+                window.dispatchEvent(new CustomEvent("zenway:replay-intro"))
+              }}
+              className="hover:text-foreground cursor-pointer transition-colors"
+              title="Watch ZENWAY brand introduction animation"
+            >
+              Replay Intro
+            </button>
             <span className="font-mono text-muted-foreground/60">•</span>
-            <span className="font-mono text-[10px]">Supabase Auth &amp; RLS Protected</span>
+            <span className="font-mono text-[10px]">Verified &amp; Student-Protected</span>
             <span className="font-mono text-muted-foreground/60">•</span>
             <span className="font-mono text-[10px]">Instant Email Alerts</span>
           </div>

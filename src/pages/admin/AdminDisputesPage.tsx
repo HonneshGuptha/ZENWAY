@@ -28,6 +28,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
+import { formatDisputeReason, formatReadableDateTime } from "@/utils/formatters"
 
 interface DisputeRecord {
   id: string
@@ -192,7 +193,7 @@ export function AdminDisputesPage() {
   })
 
   return (
-    <AdminShell currentSection="moderation">
+    <AdminShell currentSection="disputes">
       <motion.div
         variants={pageTransitionVariants}
         initial="initial"
@@ -292,7 +293,7 @@ export function AdminDisputesPage() {
                           <Badge variant="outline" className="text-[10px] uppercase font-mono">
                             {disp.transaction_type}
                           </Badge>
-                          <CardTitle className="text-sm font-semibold">{disp.dispute_reason}</CardTitle>
+                          <CardTitle className="text-sm font-semibold">{formatDisputeReason(disp.dispute_reason)}</CardTitle>
                         </div>
                         <CardDescription className="text-xs mt-1 flex items-center gap-3">
                           <span>Reporter: <strong className="text-foreground">{disp.reporter_name}</strong></span>
@@ -318,7 +319,7 @@ export function AdminDisputesPage() {
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono pt-1">
                       <span className="flex items-center gap-1">
                         <Clock className="size-3" />
-                        <span>Filed: {new Date(disp.created_at).toLocaleString()}</span>
+                        <span>Filed: {formatReadableDateTime(disp.created_at)}</span>
                       </span>
 
                       {disp.resolution_notes && (

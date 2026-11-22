@@ -34,8 +34,12 @@ import {
   MessageSquare,
   ShieldAlert,
   QrCode,
+  AlertCircle,
+  X,
 } from "lucide-react"
 import { toast } from "sonner"
+import { calculateRentalPricing } from "../../utils/rentalPricing"
+import { formatReadableDateTime } from "@/utils/formatters"
 import { pageTransitionVariants } from "@/lib/motion"
 import { LocationPickerModal } from "@/components/location/LocationPickerModal"
 import { StudentPublicProfileModal } from "@/components/profile/StudentPublicProfileModal"
@@ -134,6 +138,16 @@ export function RentPage() {
   const [startDate, setStartDate] = React.useState("")
   const [endDate, setEndDate] = React.useState("")
   const [isSubmittingBooking, setIsSubmittingBooking] = React.useState(false)
+
+  const bookingEstimate = React.useMemo(() => {
+    return calculateRentalPricing({
+      startDate,
+      endDate,
+      hourlyRate: bookingVehicle?.hourly_rate,
+      dailyRate: bookingVehicle?.daily_rate,
+      depositAmount: bookingVehicle?.deposit_amount,
+    })
+  }, [startDate, endDate, bookingVehicle])
 
   // Review Modal
   const [reviewBooking, setReviewBooking] = React.useState<RentalRequestItem | null>(null)
@@ -409,19 +423,20 @@ export function RentPage() {
     const start = new Date(startDate)
     const end = new Date(endDate)
 
-    if (start.getTime() < Date.now() - 5 * 60 * 1000) {
-      toast.error("Rental start time cannot be in the past.")
+    const pricing = calculateRentalPricing({
+      startDate,
+      endDate,
+      hourlyRate: bookingVehicle.hourly_rate,
+      dailyRate: bookingVehicle.daily_rate,
+      depositAmount: bookingVehicle.deposit_amount,
+    })
+
+    if (!pricing.isValid) {
+      toast.error(pricing.validationError || "Invalid reservation schedule.")
       return
     }
 
-    if (end <= start) {
-      toast.error("End time must be after start time.")
-      return
-    }
-
-    const durationHours = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60)))
-    const rate = bookingVehicle.hourly_rate || (bookingVehicle.daily_rate ? bookingVehicle.daily_rate / 24 : 100)
-    const calculatedTotal = durationHours * rate
+    const calculatedTotal = pricing.rentalSubtotal
 
     try {
       setIsSubmittingBooking(true)
@@ -588,7 +603,7 @@ export function RentPage() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="max-w-6xl mx-auto space-y-6 pt-2 pb-16 px-4 sm:px-6"
+      className="max-w-6xl mx-auto space-y-6 pt-2 pb-28 sm:pb-32 px-4 sm:px-6"
     >
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
@@ -726,7 +741,7 @@ export function RentPage() {
               }}
             />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className={`grid gap-5 ${filteredVehicles.length === 1 ? 'grid-cols-1 max-w-md' : filteredVehicles.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-3xl' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
               {filteredVehicles.map((vehicle) => {
                 const isOwner = user?.id === vehicle.owner_id
                 return (
@@ -789,24 +804,38 @@ export function RentPage() {
                       {/* Price & Deposit */}
                       <div className="flex items-baseline justify-between pt-1">
                         <div>
-                          <span className="text-lg font-bold text-foreground">
+                          <span className="text-lg font-bold font-mono text-foreground">
                             ₹{vehicle.hourly_rate || vehicle.daily_rate || 50}
                           </span>
                           <span className="text-[11px] text-muted-foreground font-medium">
                             {vehicle.hourly_rate ? "/hour" : "/day"}
                           </span>
+                          {vehicle.hourly_rate && vehicle.daily_rate && (
+                            <span className="text-[10px] text-muted-foreground font-mono ml-1.5">
+                              (₹{vehicle.daily_rate}/day)
+                            </span>
+                          )}
                         </div>
-                        {vehicle.deposit_amount > 0 && (
-                          <span className="text-[11px] text-muted-foreground">
-                            Deposit: ₹{vehicle.deposit_amount}
+                        {vehicle.deposit_amount > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                            <ShieldCheck className="size-3 text-emerald-600 dark:text-emerald-400" />
+                            <span>Deposit: ₹{vehicle.deposit_amount}</span>
                           </span>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">Zero deposit</span>
                         )}
                       </div>
 
-                      {/* Location */}
-                      <div className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
-                        <MapPin className="size-3.5 text-primary shrink-0" />
-                        <span className="truncate">{vehicle.pickup_location}</span>
+                      {/* Location & Availability */}
+                      <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <MapPin className="size-3.5 text-primary shrink-0" />
+                          <span className="truncate">{vehicle.pickup_location}</span>
+                        </div>
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium shrink-0 ml-1">
+                          <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Available
+                        </span>
                       </div>
 
                       {/* Owner Info & Profile Link */}
@@ -901,7 +930,7 @@ export function RentPage() {
                     <CardContent className="p-4 pt-1 space-y-1.5 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1 font-mono text-[11px]">
                         <Clock className="size-3" />
-                        <span>{new Date(req.start_time).toLocaleString()} → {new Date(req.end_time).toLocaleString()}</span>
+                        <span>{formatReadableDateTime(req.start_time)} → {formatReadableDateTime(req.end_time)}</span>
                       </div>
                       <p className="font-semibold text-foreground">Total: ₹{req.total_price}</p>
                       {(req.status === "accepted" || req.status === "active") && (
@@ -1016,7 +1045,7 @@ export function RentPage() {
                     <CardContent className="p-4 pt-1 space-y-1.5 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1 font-mono text-[11px]">
                         <Clock className="size-3" />
-                        <span>{new Date(req.start_time).toLocaleString()} → {new Date(req.end_time).toLocaleString()}</span>
+                        <span>{formatReadableDateTime(req.start_time)} → {formatReadableDateTime(req.end_time)}</span>
                       </div>
                       <p className="font-semibold text-foreground">Estimated Amount: ₹{req.total_price}</p>
                       {(req.status === "accepted" || req.status === "active") && (
@@ -1104,8 +1133,8 @@ export function RentPage() {
 
       {/* List Vehicle Modal */}
       <Dialog open={isListModalOpen} onOpenChange={setIsListModalOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden sm:rounded-2xl">
+          <DialogHeader className="p-4 sm:p-5 border-b border-border/60 shrink-0">
             <DialogTitle className="text-base font-semibold">List a Student Vehicle</DialogTitle>
             <DialogDescription className="text-xs">
               Offer your bicycle, campus e-scooter, or car for peer rental.
@@ -1113,167 +1142,203 @@ export function RentPage() {
           </DialogHeader>
 
           {!isVerified ? (
-            <EmptyState
-              variant="unverified"
-              title="Student Verification Required"
-              description="To ensure safety and community trust on campus, only verified students can list vehicles. Upload your college ID to unlock listing privileges."
-              actionLabel="Verify Student ID"
-              onAction={() => {
-                setIsListModalOpen(false)
-                navigate("/verify-student")
-              }}
-            />
+            <div className="p-6">
+              <EmptyState
+                variant="unverified"
+                title="Student Verification Required"
+                description="To ensure safety and community trust on campus, only verified students can list vehicles. Upload your college ID to unlock listing privileges."
+                actionLabel="Verify Student ID"
+                onAction={() => {
+                  setIsListModalOpen(false)
+                  navigate("/verify-student")
+                }}
+              />
+            </div>
           ) : (
-            <form onSubmit={handleCreateListing} className="space-y-3 py-2 text-xs">
-            <div className="space-y-1">
-              <Label htmlFor="v-title" className="text-xs">Listing Title</Label>
-              <Input
-                id="v-title"
-                placeholder="e.g. Trek Mountain Bike 21-Speed"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                disabled={isSubmittingListing}
-                className="h-9 text-xs"
-                required
-              />
-            </div>
+            <form onSubmit={handleCreateListing} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-3.5 text-xs">
+                <div className="space-y-1">
+                  <Label htmlFor="v-title" className="text-xs font-semibold">Listing Title *</Label>
+                  <Input
+                    id="v-title"
+                    placeholder="e.g. Trek Mountain Bike 21-Speed"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    disabled={isSubmittingListing}
+                    className="h-9 text-xs"
+                    required
+                  />
+                </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="v-type" className="text-xs">Vehicle Type</Label>
-                <select
-                  id="v-type"
-                  value={newType}
-                  onChange={(e) => setNewType(e.target.value as any)}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
-                >
-                  <option value="bicycle">Bicycle</option>
-                  <option value="e_scooter">E-Scooter</option>
-                  <option value="motorcycle">Motorcycle</option>
-                  <option value="car">Car</option>
-                </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="v-type" className="text-xs font-semibold">Vehicle Type *</Label>
+                    <select
+                      id="v-type"
+                      value={newType}
+                      onChange={(e) => setNewType(e.target.value as any)}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+                    >
+                      <option value="bicycle">Bicycle</option>
+                      <option value="e_scooter">E-Scooter</option>
+                      <option value="motorcycle">Motorcycle</option>
+                      <option value="car">Car</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="v-brand" className="text-xs font-semibold">Brand & Model</Label>
+                    <Input
+                      id="v-brand"
+                      placeholder="e.g. Hero Sprint Pro"
+                      value={newBrand}
+                      onChange={(e) => setNewBrand(e.target.value)}
+                      disabled={isSubmittingListing}
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="v-hourly" className="text-xs font-semibold">Hourly Rate (₹) *</Label>
+                    <Input
+                      id="v-hourly"
+                      type="number"
+                      placeholder="₹30"
+                      value={newHourlyRate}
+                      onChange={(e) => setNewHourlyRate(e.target.value)}
+                      disabled={isSubmittingListing}
+                      className="h-9 text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="v-daily" className="text-xs font-semibold">Daily Rate (₹)</Label>
+                    <Input
+                      id="v-daily"
+                      type="number"
+                      placeholder="₹150"
+                      value={newDailyRate}
+                      onChange={(e) => setNewDailyRate(e.target.value)}
+                      disabled={isSubmittingListing}
+                      className="h-9 text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="v-deposit" className="text-xs font-semibold">Deposit (₹)</Label>
+                    <Input
+                      id="v-deposit"
+                      type="number"
+                      placeholder="₹100"
+                      value={newDeposit}
+                      onChange={(e) => setNewDeposit(e.target.value)}
+                      disabled={isSubmittingListing}
+                      className="h-9 text-xs font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="v-location" className="text-xs font-semibold">Pickup Location on Campus *</Label>
+                    <button
+                      type="button"
+                      onClick={() => setIsLocationPickerOpen(true)}
+                      className="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <MapPin className="size-3" />
+                      <span>Choose on Map</span>
+                    </button>
+                  </div>
+                  <Input
+                    id="v-location"
+                    placeholder="e.g. MSRUAS Main Gate / West Campus Hostels"
+                    value={newLocation}
+                    onChange={(e) => setNewLocation(e.target.value)}
+                    disabled={isSubmittingListing}
+                    className="h-9 text-xs"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="v-photo" className="text-xs font-semibold">Vehicle Photo (Optional)</Label>
+                    <span className="text-[10px] text-muted-foreground font-mono">JPG, PNG, WEBP • Max 5MB</span>
+                  </div>
+                  {imageFile ? (
+                    <div className="flex items-center gap-2.5 p-2 rounded-lg bg-muted/50 border border-border/80">
+                      <div className="size-10 rounded-md bg-muted overflow-hidden shrink-0 border border-border">
+                        <img
+                          src={URL.createObjectURL(imageFile)}
+                          alt="Vehicle preview"
+                          className="size-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">{imageFile.name}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono">
+                          {(imageFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setImageFile(null)}
+                        className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive cursor-pointer"
+                      >
+                        <X className="size-3.5" />
+                        <span className="sr-only">Remove photo</span>
+                      </Button>
+                    </div>
+                  ) : (
+                    <Input
+                      id="v-photo"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                      disabled={isSubmittingListing}
+                      className="h-9 text-xs cursor-pointer"
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="v-desc" className="text-xs font-semibold">Description & Condition</Label>
+                  <Textarea
+                    id="v-desc"
+                    placeholder="Includes helmet and bike lock. Return with full battery charge."
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    disabled={isSubmittingListing}
+                    className="text-xs min-h-[60px]"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="v-brand" className="text-xs">Brand & Model</Label>
-                <Input
-                  id="v-brand"
-                  placeholder="e.g. Hero Sprint Pro"
-                  value={newBrand}
-                  onChange={(e) => setNewBrand(e.target.value)}
-                  disabled={isSubmittingListing}
-                  className="h-9 text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="v-hourly" className="text-xs">Hourly Rate (₹)</Label>
-                <Input
-                  id="v-hourly"
-                  type="number"
-                  placeholder="₹30"
-                  value={newHourlyRate}
-                  onChange={(e) => setNewHourlyRate(e.target.value)}
-                  disabled={isSubmittingListing}
-                  className="h-9 text-xs font-mono"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="v-daily" className="text-xs">Daily Rate (₹)</Label>
-                <Input
-                  id="v-daily"
-                  type="number"
-                  placeholder="₹150"
-                  value={newDailyRate}
-                  onChange={(e) => setNewDailyRate(e.target.value)}
-                  disabled={isSubmittingListing}
-                  className="h-9 text-xs font-mono"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="v-deposit" className="text-xs">Deposit (₹)</Label>
-                <Input
-                  id="v-deposit"
-                  type="number"
-                  placeholder="₹100"
-                  value={newDeposit}
-                  onChange={(e) => setNewDeposit(e.target.value)}
-                  disabled={isSubmittingListing}
-                  className="h-9 text-xs font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="v-location" className="text-xs">Pickup Location on Campus *</Label>
-                <button
+              <DialogFooter className="p-4 border-t border-border/60 bg-muted/20 shrink-0 flex flex-row items-center justify-end gap-2">
+                <Button
                   type="button"
-                  onClick={() => setIsLocationPickerOpen(true)}
-                  className="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsListModalOpen(false)}
+                  disabled={isSubmittingListing}
+                  className="cursor-pointer"
                 >
-                  <MapPin className="size-3" />
-                  <span>Choose on Map</span>
-                </button>
-              </div>
-              <Input
-                id="v-location"
-                placeholder="e.g. MSRUAS Main Gate / West Campus Hostels"
-                value={newLocation}
-                onChange={(e) => setNewLocation(e.target.value)}
-                disabled={isSubmittingListing}
-                className="h-9 text-xs"
-                required
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="v-photo" className="text-xs">Vehicle Photo</Label>
-              <Input
-                id="v-photo"
-                type="file"
-                accept="image/*"
-                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                disabled={isSubmittingListing}
-                className="h-9 text-xs cursor-pointer"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="v-desc" className="text-xs">Description & Condition</Label>
-              <Textarea
-                id="v-desc"
-                placeholder="Includes helmet and bike lock. Return with full battery charge."
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                disabled={isSubmittingListing}
-                className="text-xs min-h-[60px]"
-              />
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsListModalOpen(false)}
-                disabled={isSubmittingListing}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={isSubmittingListing}
-                className="gap-1.5 cursor-pointer"
-              >
-                {isSubmittingListing ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-                <span>Publish Listing</span>
-              </Button>
-            </DialogFooter>
-          </form>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isSubmittingListing}
+                  className="gap-1.5 cursor-pointer font-semibold"
+                >
+                  {isSubmittingListing ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+                  <span>Publish Listing</span>
+                </Button>
+              </DialogFooter>
+            </form>
           )}
         </DialogContent>
       </Dialog>
@@ -1296,7 +1361,10 @@ export function RentPage() {
                 <span>{bookingVehicle?.pickup_location}</span>
               </p>
               <p className="font-mono text-primary font-bold">
-                Rate: ₹{bookingVehicle?.hourly_rate || bookingVehicle?.daily_rate}/hr
+                Rate: ₹
+                {bookingVehicle?.hourly_rate
+                  ? `${bookingVehicle.hourly_rate}/hr`
+                  : `${bookingVehicle?.daily_rate}/day (₹${bookingEstimate.effectiveHourlyRate}/hr)`}
               </p>
             </div>
 
@@ -1326,6 +1394,49 @@ export function RentPage() {
               />
             </div>
 
+            {bookingEstimate.validationError && (
+              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2">
+                <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>{bookingEstimate.validationError}</span>
+              </div>
+            )}
+
+            {bookingEstimate.isValid && (
+              <div className="p-3 rounded-xl bg-muted/60 border border-border/80 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Estimated Duration:</span>
+                  <span className="font-mono font-medium text-foreground">
+                    {bookingEstimate.durationHours} hr{bookingEstimate.durationHours > 1 ? "s" : ""}
+                    {bookingEstimate.durationHours >= 24 ? ` (${(bookingEstimate.durationHours / 24).toFixed(1)} days)` : ""}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>
+                    Rental Subtotal ({bookingEstimate.durationHours} hr × ₹{bookingEstimate.effectiveHourlyRate}/hr):
+                  </span>
+                  <span className="font-mono font-semibold text-foreground">₹{bookingEstimate.rentalSubtotal}</span>
+                </div>
+                {bookingEstimate.depositAmount > 0 && (
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <ShieldCheck className="size-3 text-emerald-600 dark:text-emerald-400" />
+                      Refundable Deposit:
+                    </span>
+                    <span className="font-mono text-foreground">₹{bookingEstimate.depositAmount}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-foreground font-bold pt-1.5 border-t border-border/60">
+                  <div className="space-y-0.5">
+                    <span>Estimated Total at Meetup:</span>
+                    <p className="text-[10px] text-muted-foreground font-normal">
+                      Direct peer UPI settlement at handover (estimate only)
+                    </p>
+                  </div>
+                  <span className="font-mono text-primary text-sm font-bold">₹{bookingEstimate.totalEstimate}</span>
+                </div>
+              </div>
+            )}
+
             <DialogFooter className="pt-2">
               <Button
                 type="button"
@@ -1339,7 +1450,7 @@ export function RentPage() {
               <Button
                 type="submit"
                 size="sm"
-                disabled={isSubmittingBooking}
+                disabled={isSubmittingBooking || !bookingEstimate.isValid}
                 className="gap-1.5 cursor-pointer"
               >
                 {isSubmittingBooking ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />}

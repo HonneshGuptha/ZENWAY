@@ -358,7 +358,7 @@ export function LoginPage() {
         {/* Security badge footer */}
         <div className="space-y-2 text-center">
           <p className="text-[11px] text-muted-foreground">
-            Protected by Supabase Auth with Row Level Security.
+            Protected by secure authentication and campus student access verification.
           </p>
           <div>
             <button

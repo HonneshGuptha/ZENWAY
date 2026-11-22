@@ -6,13 +6,25 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   FileText,
   Search,
   RefreshCw,
   Loader2,
+  Copy,
+  Check,
+  Code,
 } from "lucide-react"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
+import { formatReadableDateTime } from "@/utils/formatters"
 
 interface AuditLogRecord {
   id: string
@@ -33,6 +45,16 @@ export function AdminReportsPage() {
   const [logs, setLogs] = React.useState<AuditLogRecord[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [selectedLogPayload, setSelectedLogPayload] = React.useState<AuditLogRecord | null>(null)
+  const [hasCopied, setHasCopied] = React.useState(false)
+
+  const handleCopyPayload = () => {
+    if (!selectedLogPayload?.details) return
+    navigator.clipboard.writeText(JSON.stringify(selectedLogPayload.details, null, 2))
+    setHasCopied(true)
+    toast.success("Audit payload JSON copied to clipboard")
+    setTimeout(() => setHasCopied(false), 2000)
+  }
 
   const fetchLogs = React.useCallback(async () => {
     try {
@@ -147,43 +169,131 @@ export function AdminReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60 font-mono text-[11px]">
-                  {filteredLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="p-3 pl-4 whitespace-nowrap text-muted-foreground">
-                        {new Date(log.created_at).toLocaleString()}
-                      </td>
-                      <td className="p-3">
-                        <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">
-                          {log.action}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-foreground font-semibold">
-                        {log.target_entity}
-                      </td>
-                      <td className="p-3 text-muted-foreground">
-                        {log.actor?.full_name ? (
-                          <div className="flex flex-col">
-                            <span className="text-foreground font-semibold font-sans">{log.actor.full_name}</span>
-                            <span className="text-[10px] font-mono text-primary uppercase">{log.actor.role || "admin"}</span>
+                  {filteredLogs.map((log) => {
+                    const detailKeys = log.details && typeof log.details === "object" ? Object.keys(log.details) : []
+                    const summaryPreview = detailKeys.length > 0
+                      ? detailKeys.slice(0, 3).map((k) => `${k}: ${String(log.details[k]).slice(0, 20)}`).join(" • ")
+                      : JSON.stringify(log.details)
+
+                    return (
+                      <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="p-3 pl-4 whitespace-nowrap text-muted-foreground">
+                          {formatReadableDateTime(log.created_at)}
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">
+                            {log.action}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-foreground font-semibold">
+                          {log.target_entity}
+                        </td>
+                        <td className="p-3 text-muted-foreground">
+                          {log.actor?.full_name ? (
+                            <div className="flex flex-col">
+                              <span className="text-foreground font-semibold font-sans">{log.actor.full_name}</span>
+                              <span className="text-[10px] font-mono text-primary uppercase">{log.actor.role || "admin"}</span>
+                            </div>
+                          ) : log.actor_id ? (
+                            <span title={log.actor_id}>{`${log.actor_id.slice(0, 8)}...`}</span>
+                          ) : (
+                            <span className="text-zinc-500 italic">system</span>
+                          )}
+                        </td>
+                        <td className="p-3 pr-4 max-w-sm">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate text-muted-foreground text-[10px]" title={summaryPreview}>
+                              {summaryPreview || "// No extra payload"}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedLogPayload(log)}
+                              className="h-6 px-2 text-[10px] font-mono shrink-0 gap-1 cursor-pointer bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-300"
+                              title="Expand full cryptographic audit payload"
+                            >
+                              <Code className="size-3 text-primary" />
+                              <span>View Payload</span>
+                            </Button>
                           </div>
-                        ) : log.actor_id ? (
-                          <span title={log.actor_id}>{`${log.actor_id.slice(0, 8)}...`}</span>
-                        ) : (
-                          <span className="text-zinc-500 italic">system</span>
-                        )}
-                      </td>
-                      <td className="p-3 pr-4 max-w-xs truncate text-muted-foreground">
-                        <span title={JSON.stringify(log.details, null, 2)}>
-                          {JSON.stringify(log.details)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         )}
+
+        {/* Full Audit Payload Inspection Modal */}
+        <Dialog open={!!selectedLogPayload} onOpenChange={(open) => !open && setSelectedLogPayload(null)}>
+          <DialogContent className="max-w-2xl bg-[#09090B] border-[rgba(255,255,255,0.15)] text-[#FAFAFA]">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-mono uppercase tracking-wider text-zinc-200 flex items-center gap-2">
+                <FileText className="size-4 text-[#EA2E00]" />
+                <span>AUDIT RECORD PAYLOAD INSPECTOR</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs font-mono text-zinc-400">
+                Action: <strong className="text-zinc-200">{selectedLogPayload?.action}</strong> • Entity: <strong className="text-zinc-200">{selectedLogPayload?.target_entity}</strong> ({selectedLogPayload?.target_id})
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 py-2 text-xs font-mono">
+              <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-[#121215] border border-[rgba(255,255,255,0.08)] text-[11px]">
+                <div>
+                  <span className="text-zinc-500 block">EVENT ID:</span>
+                  <span className="text-zinc-300 select-all">{selectedLogPayload?.id}</span>
+                </div>
+                <div>
+                  <span className="text-zinc-500 block">TIMESTAMP:</span>
+                  <span className="text-zinc-300">{formatReadableDateTime(selectedLogPayload?.created_at)}</span>
+                </div>
+                <div>
+                  <span className="text-zinc-500 block">ACTOR:</span>
+                  <span className="text-zinc-300">
+                    {selectedLogPayload?.actor?.full_name || selectedLogPayload?.actor_id || "system"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-zinc-500 block">IP / CLIENT:</span>
+                  <span className="text-zinc-300">{selectedLogPayload?.ip_address || "internal_rpc"}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                  <span>RAW IMMUTABLE JSON PAYLOAD:</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyPayload}
+                    className="h-6 px-2 text-[10px] text-zinc-300 hover:text-white cursor-pointer gap-1"
+                  >
+                    {hasCopied ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
+                    <span>{hasCopied ? "Copied" : "Copy JSON"}</span>
+                  </Button>
+                </div>
+                <pre className="p-3 rounded-lg bg-[#050507] border border-[rgba(255,255,255,0.1)] text-emerald-400 font-mono text-[11px] max-h-[300px] overflow-auto select-all leading-relaxed">
+                  {JSON.stringify(selectedLogPayload?.details, null, 2)}
+                </pre>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedLogPayload(null)}
+                className="text-xs font-mono border-[rgba(255,255,255,0.12)] bg-[#18181B] text-zinc-200"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </motion.div>
     </AdminShell>
   )

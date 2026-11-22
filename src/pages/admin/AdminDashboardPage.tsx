@@ -847,10 +847,10 @@ export function AdminDashboardPage() {
                       return (
                         <div
                           key={item.id}
-                          className="p-3 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#18181B] space-y-2 hover:border-[rgba(255,255,255,0.12)] transition-colors"
+                          className="p-3.5 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#18181B] space-y-2.5 hover:border-[rgba(255,255,255,0.12)] transition-colors"
                         >
-                          <div className="flex items-center justify-between text-xs gap-3">
-                            <div className="flex items-center gap-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2 sm:gap-3">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-sm text-[#FAFAFA] font-sans">
                                 {item.name}
                               </span>
@@ -859,12 +859,12 @@ export function AdminDashboardPage() {
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                               <Button
                                 size="sm"
                                 disabled={isProcessing}
                                 onClick={() => handleApproveLocality(item)}
-                                className="h-7 text-[11px] font-mono bg-[#10B981] hover:bg-[#059669] text-black font-bold cursor-pointer gap-1"
+                                className="h-8 sm:h-7 text-[11px] font-mono bg-[#10B981] hover:bg-[#059669] text-black font-bold cursor-pointer gap-1"
                               >
                                 {isProcessing ? (
                                   <Loader2 className="size-3 animate-spin" />
@@ -878,7 +878,7 @@ export function AdminDashboardPage() {
                                 variant="outline"
                                 disabled={isProcessing}
                                 onClick={() => handleRejectLocality(item)}
-                                className="h-7 text-[11px] font-mono border-red-950/60 bg-red-950/20 hover:bg-red-900/40 text-red-400 cursor-pointer gap-1"
+                                className="h-8 sm:h-7 text-[11px] font-mono border-red-950/60 bg-red-950/20 hover:bg-red-900/40 text-red-400 cursor-pointer gap-1"
                               >
                                 <XCircle className="size-3" />
                                 <span>Reject</span>

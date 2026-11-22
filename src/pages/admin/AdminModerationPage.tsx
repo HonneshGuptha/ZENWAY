@@ -29,6 +29,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
+import { formatReadableDateTime } from "@/utils/formatters"
 
 export function AdminModerationPage() {
   const [activeTab, setActiveTab] = React.useState<"vehicle" | "ride" | "carry">("vehicle")
@@ -238,7 +239,7 @@ export function AdminModerationPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className={`grid gap-4 ${filteredItems.length === 1 ? 'grid-cols-1 max-w-md' : filteredItems.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-3xl' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
             {filteredItems.map((item) => {
               const title =
                 activeTab === "vehicle"
@@ -251,7 +252,7 @@ export function AdminModerationPage() {
                 activeTab === "vehicle"
                   ? `${item.type} • ₹${item.hourly_rate || item.daily_rate}/hr`
                   : activeTab === "ride"
-                  ? `${new Date(item.departure_time).toLocaleString()} • ${item.available_seats} seats`
+                  ? `${formatReadableDateTime(item.departure_time)} • ${item.available_seats} seats`
                   : `${item.item_size} • ₹${item.reward_amount}`
 
               const canModerate =

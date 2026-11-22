@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
+import { formatReadableDateTime } from "@/utils/formatters"
 
 interface UnifiedActivityItem {
   id: string
@@ -149,7 +150,7 @@ export function ActivityPage() {
             service: "ride",
             role: "provider",
             title: `${r.origin_name} → ${r.destination_name} (Driver)`,
-            subtitle: `Departure: ${new Date(r.departure_time).toLocaleString()}`,
+            subtitle: `Departure: ${formatReadableDateTime(r.departure_time)}`,
             status: r.status,
             amount: r.price_per_seat,
             timestamp: r.created_at,
@@ -233,7 +234,7 @@ export function ActivityPage() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="max-w-4xl mx-auto space-y-6 pt-2 pb-16 px-4 sm:px-6"
+      className="max-w-4xl mx-auto space-y-6 pt-2 pb-28 sm:pb-32 px-4 sm:px-6"
     >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
@@ -377,22 +378,40 @@ export function ActivityPage() {
                     </div>
 
                     <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm text-foreground">
                           {item.title}
                         </span>
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-muted text-muted-foreground">
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/50">
                           {item.service}
+                        </span>
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                            item.role === "customer"
+                              ? "bg-secondary/60 text-secondary-foreground border-border/60"
+                              : "bg-primary/10 text-primary border-primary/20"
+                          }`}
+                        >
+                          {item.role === "customer" ? "My Booking" : "My Listing"}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">{item.subtitle}</p>
                       <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-mono pt-1">
                         <span className="flex items-center gap-1">
                           <Clock className="size-3" />
-                          <span>{new Date(item.timestamp).toLocaleString()}</span>
+                          <span>
+                            {new Date(item.timestamp).toLocaleDateString([], {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
                         </span>
                         {item.amount != null && item.amount > 0 && (
-                          <span className="font-semibold text-foreground">₹{item.amount}</span>
+                          <span className="font-semibold text-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded text-[11px]">
+                            ₹{item.amount}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -405,7 +424,7 @@ export function ActivityPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => navigate(`/${item.service}`)}
-                      className="text-xs h-9 min-h-[38px] px-3 gap-1 text-muted-foreground hover:text-foreground cursor-pointer"
+                      className="text-xs h-9 min-h-[44px] sm:min-h-[36px] px-3 gap-1 text-muted-foreground hover:text-foreground cursor-pointer"
                     >
                       <span>View</span>
                       <ArrowRight className="size-3" />

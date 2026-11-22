@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -237,7 +236,8 @@ export function AdminUsersPage() {
           </div>
         ) : (
           <div className="border border-border/80 rounded-xl overflow-hidden bg-card shadow-xs">
-            <div className="overflow-x-auto">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="border-b border-border/80 bg-muted/40 font-medium text-muted-foreground">
                   <tr>
@@ -250,71 +250,81 @@ export function AdminUsersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {filteredUsers.map((user) => {
-                    const isSuspended = user.verification_status === "suspended"
-                    const isVerified = user.verification_status === "verified"
-                    const isAdmin = user.role === "admin"
+                  {filteredUsers.map((u) => {
+                    const isSuspended = u.verification_status === "suspended"
+                    const isVerified = u.verification_status === "verified"
+                    const isPending = u.verification_status === "pending"
+                    const isAdmin = u.role === "admin"
 
                     return (
-                      <tr key={user.id} className="hover:bg-muted/30 transition-colors">
+                      <tr key={u.id} className="hover:bg-muted/30 transition-colors">
                         <td className="p-3 pl-4">
                           <div className="flex flex-col">
                             <span className="font-semibold text-foreground text-sm">
-                              {user.full_name}
+                              {u.full_name}
                             </span>
                             <span className="text-[11px] font-mono text-muted-foreground">
-                              {user.email}
+                              {u.email}
                             </span>
-                            {user.university_name && (
+                            {u.university_name && (
                               <span className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
                                 <GraduationCap className="size-3" />
-                                <span>{user.university_name}</span>
+                                <span>{u.university_name}</span>
                               </span>
                             )}
                           </div>
                         </td>
 
                         <td className="p-3">
-                          <Badge
-                            variant={isAdmin ? "default" : "outline"}
-                            className="text-[10px] uppercase font-bold"
-                          >
-                            {user.role}
-                          </Badge>
+                          {isAdmin ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-zinc-800 text-zinc-200 border border-zinc-700">
+                              ADMIN
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium uppercase text-muted-foreground bg-muted/60">
+                              STUDENT
+                            </span>
+                          )}
                         </td>
 
                         <td className="p-3">
-                          <Badge
-                            variant={
-                              user.registration_status === "approved"
-                                ? "outline"
-                                : user.registration_status === "pending"
-                                ? "secondary"
-                                : "destructive"
-                            }
-                            className="text-[10px] capitalize font-semibold"
-                          >
-                            {user.registration_status}
-                          </Badge>
+                          {u.registration_status === "approved" ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              approved
+                            </span>
+                          ) : u.registration_status === "pending" ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              pending
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                              {u.registration_status}
+                            </span>
+                          )}
                         </td>
 
                         <td className="p-3">
-                          <Badge
-                            variant={
-                              isSuspended
-                                ? "destructive"
-                                : isVerified
-                                ? "default"
-                                : "outline"
-                            }
-                            className="text-[10px] capitalize font-semibold"
-                          >
-                            {user.verification_status}
-                          </Badge>
+                          {isVerified ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              verified
+                            </span>
+                          ) : isPending ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              pending
+                            </span>
+                          ) : isSuspended ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                              suspended
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium text-muted-foreground bg-muted/50 border border-border/50">
+                              {u.verification_status}
+                            </span>
+                          )}
                         </td>
 
                         <td className="p-3 font-mono text-[11px] text-muted-foreground">
-                          {new Date(user.created_at).toLocaleDateString()}
+                          {new Date(u.created_at).toLocaleDateString()}
                         </td>
 
                         <td className="p-3 pr-4 text-right">
@@ -323,7 +333,7 @@ export function AdminUsersPage() {
                               variant={isSuspended ? "outline" : "destructive"}
                               size="sm"
                               onClick={() => {
-                                setSuspendTarget(user)
+                                setSuspendTarget(u)
                                 setSuspendReason("")
                               }}
                               className="text-[11px] h-7 px-2.5 cursor-pointer gap-1"
@@ -347,6 +357,73 @@ export function AdminUsersPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card List (No horizontal clipping on 390px) */}
+            <div className="md:hidden divide-y divide-border/60">
+              {filteredUsers.map((u) => {
+                const isSuspended = u.verification_status === "suspended"
+                const isVerified = u.verification_status === "verified"
+                const isPending = u.verification_status === "pending"
+                const isAdmin = u.role === "admin"
+
+                return (
+                  <div key={u.id} className="p-3.5 space-y-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-foreground text-sm">{u.full_name}</p>
+                        <p className="text-[11px] font-mono text-muted-foreground">{u.email}</p>
+                      </div>
+                      {isAdmin ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-zinc-800 text-zinc-200 border border-zinc-700">
+                          ADMIN
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono text-muted-foreground bg-muted/60">
+                          STUDENT
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-[11px] text-muted-foreground">Reg:</span>
+                      {u.registration_status === "approved" ? (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400">approved</span>
+                      ) : (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-500/10 text-amber-400">{u.registration_status}</span>
+                      )}
+
+                      <span className="text-[11px] text-muted-foreground ml-2">ID:</span>
+                      {isVerified ? (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400">verified</span>
+                      ) : isPending ? (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-500/10 text-amber-400">pending</span>
+                      ) : (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-red-500/10 text-red-400">{u.verification_status}</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px]">
+                      <span className="font-mono text-muted-foreground">
+                        {new Date(u.created_at).toLocaleDateString()}
+                      </span>
+                      {!isAdmin && (
+                        <Button
+                          variant={isSuspended ? "outline" : "destructive"}
+                          size="sm"
+                          onClick={() => {
+                            setSuspendTarget(u)
+                            setSuspendReason("")
+                          }}
+                          className="text-[11px] h-7 px-2.5 cursor-pointer"
+                        >
+                          {isSuspended ? "Reinstate" : "Suspend"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
