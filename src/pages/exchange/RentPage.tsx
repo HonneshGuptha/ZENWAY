@@ -43,6 +43,8 @@ import { formatReadableDateTime } from "@/utils/formatters"
 import { pageTransitionVariants } from "@/lib/motion"
 import { LocationPickerModal } from "@/components/location/LocationPickerModal"
 import { StudentPublicProfileModal } from "@/components/profile/StudentPublicProfileModal"
+import { useProfileGuard } from "@/hooks/useProfileGuard"
+import { ProfileCompletionModal } from "@/components/profile/ProfileCompletionModal"
 import { ReportModal } from "@/components/safety/ReportModal"
 import { CancellationModal } from "@/components/exchange/CancellationModal"
 import { DisputeModal } from "@/components/exchange/DisputeModal"
@@ -175,6 +177,7 @@ export function RentPage() {
 
   // UPI Payment Modal
   const [showUPI, setShowUPI] = React.useState(false)
+  const profileGuard = useProfileGuard()
   const [upiPaymentData, setUpiPaymentData] = React.useState<{
     amount: number
     txId: string
@@ -295,9 +298,16 @@ export function RentPage() {
     }
   }, [fetchVehicles, fetchUserRentals, user])
 
-  // Handle Listing Creation with Explicit Image Upload Reliability & Cleanup
+  // Handle Listing Creation with Profile Completeness Protection
   const handleCreateListing = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!profileGuard.requireCompleteProfile(() => proceedCreateListing(), "Vehicle Rental Listing")) {
+      return
+    }
+    await proceedCreateListing()
+  }
+
+  const proceedCreateListing = async () => {
     if (isSubmittingListing) return
 
     if (!user) {
@@ -406,9 +416,16 @@ export function RentPage() {
     }
   }
 
-  // Handle Booking Submit with Server-Side Authoritative Price Integrity
+  // Handle Booking Submit with Profile Completeness Protection
   const handleConfirmBooking = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!profileGuard.requireCompleteProfile(() => proceedConfirmBooking(), "Vehicle Rental Reservation")) {
+      return
+    }
+    await proceedConfirmBooking()
+  }
+
+  const proceedConfirmBooking = async () => {
     if (isSubmittingBooking) return
     if (!user || !bookingVehicle) return
     if (!isVerified) {
@@ -487,8 +504,15 @@ export function RentPage() {
     }
   }
 
-  // Owner Action: Accept Request (Calls atomic accept_rental_request RPC)
+  // Owner Action: Accept Request with Profile Completeness Protection
   const handleAcceptRequest = async (requestId: string) => {
+    if (!profileGuard.requireCompleteProfile(() => proceedAcceptRequest(requestId), "Accepting Rental Request")) {
+      return
+    }
+    await proceedAcceptRequest(requestId)
+  }
+
+  const proceedAcceptRequest = async (requestId: string) => {
     try {
       setActionLoadingId(requestId)
       const { error } = await supabase.rpc("accept_rental_request", {
@@ -1597,6 +1621,14 @@ export function RentPage() {
         payeeName={upiPaymentData.payeeName || "Student Peer"}
         amount={upiPaymentData.amount}
         txId={upiPaymentData.txId}
+      />
+
+      {/* Incomplete Profile Completion Modal (Zero Data Loss) */}
+      <ProfileCompletionModal
+        isOpen={profileGuard.isModalOpen}
+        onClose={profileGuard.handleModalClose}
+        onSuccess={profileGuard.handleModalSuccess}
+        serviceName={profileGuard.serviceContext}
       />
     </motion.div>
   )

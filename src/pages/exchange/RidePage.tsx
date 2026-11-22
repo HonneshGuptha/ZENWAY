@@ -48,6 +48,8 @@ import {
 } from "@/constants/campus"
 import { LocationPickerModal } from "@/components/location/LocationPickerModal"
 import { CampusMap } from "@/components/location/CampusMap"
+import { useProfileGuard } from "@/hooks/useProfileGuard"
+import { ProfileCompletionModal } from "@/components/profile/ProfileCompletionModal"
 import { StudentPublicProfileModal } from "@/components/profile/StudentPublicProfileModal"
 import { ReportModal } from "@/components/safety/ReportModal"
 import { CancellationModal } from "@/components/exchange/CancellationModal"
@@ -170,6 +172,7 @@ export function RidePage() {
 
   // UPI Payment Modal
   const [showUPI, setShowUPI] = React.useState(false)
+  const profileGuard = useProfileGuard()
   const [upiPaymentData, setUpiPaymentData] = React.useState<{ amount: number; txId: string; payeeName?: string; payeeUpi?: string | null }>({
     amount: 0,
     txId: "",
@@ -332,9 +335,16 @@ export function RidePage() {
     }
   }
 
-  // Publish Ride Handler (Campus-Anchored Routing)
+  // Publish Ride Handler with Profile Completeness Protection
   const handlePublishRide = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!profileGuard.requireCompleteProfile(() => proceedPublishRide(), "Ride Share Offering")) {
+      return
+    }
+    await proceedPublishRide()
+  }
+
+  const proceedPublishRide = async () => {
     if (isSubmittingRide) return
     if (!user) return
     if (!isVerified) {
@@ -393,9 +403,16 @@ export function RidePage() {
     }
   }
 
-  // Join Ride Handler with Server-Side Price & Seat Integrity
+  // Join Ride Handler with Profile Completeness Protection
   const handleConfirmJoin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!profileGuard.requireCompleteProfile(() => proceedConfirmJoin(), "Seat Reservation")) {
+      return
+    }
+    await proceedConfirmJoin()
+  }
+
+  const proceedConfirmJoin = async () => {
     if (isSubmittingJoin) return
     if (!user || !joiningRide) return
     if (!isVerified) {
@@ -455,8 +472,15 @@ export function RidePage() {
     }
   }
 
-  // Driver Action: Accept Request (Calls atomic accept_ride_request RPC)
+  // Driver Action: Accept Request with Profile Completeness Protection
   const handleAcceptRequest = async (requestId: string) => {
+    if (!profileGuard.requireCompleteProfile(() => proceedAcceptRequest(requestId), "Accepting Ride Request")) {
+      return
+    }
+    await proceedAcceptRequest(requestId)
+  }
+
+  const proceedAcceptRequest = async (requestId: string) => {
     try {
       setActionLoadingId(requestId)
       const { error } = await supabase.rpc("accept_ride_request", {
@@ -1862,6 +1886,14 @@ export function RidePage() {
         payeeName={upiPaymentData.payeeName || "Student Peer"}
         amount={upiPaymentData.amount}
         txId={upiPaymentData.txId}
+      />
+
+      {/* Incomplete Profile Completion Modal (Zero Data Loss) */}
+      <ProfileCompletionModal
+        isOpen={profileGuard.isModalOpen}
+        onClose={profileGuard.handleModalClose}
+        onSuccess={profileGuard.handleModalSuccess}
+        serviceName={profileGuard.serviceContext}
       />
     </motion.div>
   )

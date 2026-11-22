@@ -24,6 +24,14 @@ import {
   CheckCircle2,
 } from "lucide-react"
 import { pageTransitionVariants } from "@/lib/motion"
+import {
+  SUPPORTED_UNIVERSITIES,
+  DEFAULT_UNIVERSITY,
+  MORE_UNIVERSITIES_NOTE,
+  isValidUniversity,
+  normalizeUniversity,
+} from "@/constants/universities"
+import { isValidIndianPhone, normalizeIndianPhone } from "@/utils/phone"
 
 export function RegisterPage() {
   const { user, signUp } = useAuth()
@@ -34,7 +42,7 @@ export function RegisterPage() {
   const [password, setPassword] = React.useState("")
   const [confirmPassword, setConfirmPassword] = React.useState("")
   const [phoneNumber, setPhoneNumber] = React.useState("")
-  const [universityName, setUniversityName] = React.useState("")
+  const [universityName, setUniversityName] = React.useState<string>(DEFAULT_UNIVERSITY)
 
   const [showPassword, setShowPassword] = React.useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false)
@@ -80,14 +88,27 @@ export function RegisterPage() {
       return
     }
 
+    if (!isValidUniversity(universityName)) {
+      setErrorMessage("Please select a valid supported university from the list.")
+      return
+    }
+
+    if (!isValidIndianPhone(phoneNumber)) {
+      setErrorMessage("Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.")
+      return
+    }
+
+    const cleanUniversity = normalizeUniversity(universityName)!
+    const cleanPhone = normalizeIndianPhone(phoneNumber)!
+
     try {
       setIsSubmitting(true)
       await signUp({
         email: email.trim().toLowerCase(),
         password,
         fullName: fullName.trim(),
-        phoneNumber: phoneNumber.trim() || undefined,
-        universityName: universityName.trim() || undefined,
+        phoneNumber: cleanPhone,
+        universityName: cleanUniversity,
       })
 
       setConfirmationEmail(email.trim())
@@ -357,39 +378,60 @@ export function RegisterPage() {
                 </div>
               </div>
 
-              {/* Phone & University (2-col on sm) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* University & Phone (Mandatory Fields) */}
+              <div className="space-y-4">
+                {/* University Selection */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="reg-phone">Phone Number (Optional)</Label>
+                  <Label htmlFor="reg-university" className="flex items-center gap-1">
+                    <span>University *</span>
+                    <span className="text-[11px] text-muted-foreground font-normal">(Verified Campus)</span>
+                  </Label>
+                  <div className="relative">
+                    <select
+                      id="reg-university"
+                      required
+                      value={universityName}
+                      onChange={(e) => setUniversityName(e.target.value)}
+                      disabled={isSubmitting}
+                      className="w-full h-10 pl-9 pr-8 text-sm rounded-md border border-input bg-background text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring appearance-none cursor-pointer"
+                    >
+                      {SUPPORTED_UNIVERSITIES.map((univ) => (
+                        <option key={univ.id} value={univ.name}>
+                          {univ.name}
+                        </option>
+                      ))}
+                    </select>
+                    <GraduationCap className="size-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
+                  </div>
+                  <p className="text-[11px] text-primary/80 dark:text-primary/90 font-medium flex items-center gap-1.5 pt-0.5">
+                    <span>✦</span>
+                    <span>{MORE_UNIVERSITIES_NOTE}</span>
+                  </p>
+                </div>
+
+                {/* Phone Number Input */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="reg-phone" className="flex items-center gap-1">
+                    <span>Mobile Phone Number *</span>
+                    <span className="text-[11px] text-muted-foreground font-normal">(Indian Mobile)</span>
+                  </Label>
                   <div className="relative">
                     <Input
                       id="reg-phone"
                       type="tel"
                       autoComplete="tel"
-                      placeholder="+1 (555) 019-2834"
+                      required
+                      placeholder="98765 43210 or +91 98765 43210"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       disabled={isSubmitting}
-                      className="pl-9 h-10 text-sm"
+                      className="pl-9 h-10 text-sm font-mono"
                     />
                     <Phone className="size-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
                   </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="reg-university">University Name (Optional)</Label>
-                  <div className="relative">
-                    <Input
-                      id="reg-university"
-                      type="text"
-                      placeholder="State University"
-                      value={universityName}
-                      onChange={(e) => setUniversityName(e.target.value)}
-                      disabled={isSubmitting}
-                      className="pl-9 h-10 text-sm"
-                    />
-                    <GraduationCap className="size-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
-                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    10-digit number starting with 6–9. Never exposed publicly; revealed only to confirmed exchange peers.
+                  </p>
                 </div>
               </div>
 

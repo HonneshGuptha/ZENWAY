@@ -14,6 +14,10 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Supabase Backups
+supabase/backups/
+*.backup.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

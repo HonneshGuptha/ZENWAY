@@ -23,6 +23,9 @@ import {
 } from "lucide-react"
 import { pageTransitionVariants } from "@/lib/motion"
 import { MascotLoader } from "@/components/ui/MascotLoader"
+import { supabase } from "@/lib/supabase"
+import { isValidUniversity } from "@/constants/universities"
+import { isValidIndianPhone } from "@/utils/phone"
 
 export function LoginPage() {
   const { user, signIn } = useAuth()
@@ -103,6 +106,40 @@ export function LoginPage() {
           }
         } catch {
           // fallback to default target
+        }
+      }
+
+      // Check for incomplete profile on existing non-admin student sign in
+      if (data?.user?.id && target !== "/admin/registrations") {
+        try {
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("role, university_name")
+            .eq("id", data.user.id)
+            .maybeSingle()
+
+          const isAdminUser = prof?.role === "admin"
+          if (!isAdminUser) {
+            let userPhone: string | null = null
+            try {
+              const { data: pubProf } = await supabase
+                .from("public_profiles")
+                .select("phone_number")
+                .eq("id", data.user.id)
+                .maybeSingle()
+              userPhone = pubProf?.phone_number ?? null
+            } catch {
+              // ignore
+            }
+
+            const hasValidUniv = isValidUniversity(prof?.university_name)
+            const hasValidPhone = isValidIndianPhone(userPhone)
+            if (!hasValidUniv || !hasValidPhone) {
+              target = `/profile?complete=true&redirect=${encodeURIComponent(target)}`
+            }
+          }
+        } catch {
+          // fallback to target
         }
       }
       // Hold smooth transition window (2200ms) with MascotLoader to ensure auth session and profile hydrate seamlessly

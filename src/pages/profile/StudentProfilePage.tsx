@@ -31,6 +31,13 @@ import {
   Sparkles,
   MapPin,
 } from "lucide-react"
+import {
+  SUPPORTED_UNIVERSITIES,
+  DEFAULT_UNIVERSITY,
+  MORE_UNIVERSITIES_NOTE,
+  normalizeUniversity,
+} from "@/constants/universities"
+import { normalizeIndianPhone } from "@/utils/phone"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
 
@@ -62,8 +69,15 @@ export function StudentProfilePage() {
   React.useEffect(() => {
     if (profile) {
       setFullName(profile.full_name ?? "")
-      setPhoneNumber(profile.phone_number ?? "")
-      setUniversityName(profile.university_name ?? "")
+      const rawDigits = (profile.phone_number || (profile as any).phone || "").replace(/\D/g, "")
+      const tenDigits =
+        rawDigits.length === 12 && rawDigits.startsWith("91")
+          ? rawDigits.slice(2)
+          : rawDigits.length === 11 && rawDigits.startsWith("0")
+            ? rawDigits.slice(1)
+            : rawDigits
+      setPhoneNumber(tenDigits)
+      setUniversityName(profile.university_name ?? DEFAULT_UNIVERSITY)
       setBio(profile.bio ?? "")
       setUpiId(profile.upi_id ?? "")
     }
@@ -71,6 +85,7 @@ export function StudentProfilePage() {
     profile?.id,
     profile?.full_name,
     profile?.phone_number,
+    (profile as any)?.phone,
     profile?.university_name,
     profile?.bio,
     profile?.upi_id,
@@ -120,14 +135,14 @@ export function StudentProfilePage() {
 
     let cleanPhone: string | null = null
     if (phoneNumber.trim()) {
-      const digits = phoneNumber.replace(/\D/g, "")
-      const tenDigit = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits
-      if (tenDigit.length !== 10) {
-        setErrorMessage("Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).")
+      cleanPhone = normalizeIndianPhone(phoneNumber)
+      if (!cleanPhone) {
+        setErrorMessage("Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.")
         return
       }
-      cleanPhone = tenDigit
     }
+
+    const canonicalUniv = normalizeUniversity(universityName)
 
     const trimmedUpi = upiId.trim()
     if (trimmedUpi && !/^[a-zA-Z0-9._-]{2,32}@[a-zA-Z]{2,15}$/.test(trimmedUpi)) {
@@ -141,11 +156,12 @@ export function StudentProfilePage() {
         .from("profiles")
         .update({
           full_name: fullName.trim(),
+          phone: cleanPhone,
           phone_number: cleanPhone,
-          university_name: universityName.trim() || null,
+          university_name: canonicalUniv,
           bio: bio.trim() || null,
           upi_id: trimmedUpi || null,
-        })
+        } as any)
         .eq("id", user.id)
 
       if (updateErr) {
@@ -156,6 +172,12 @@ export function StudentProfilePage() {
       setSaveSuccess(true)
       toast.success("Profile details updated successfully")
       setTimeout(() => setSaveSuccess(false), 3000)
+
+      const redirectTarget = new URLSearchParams(window.location.search).get("redirect")
+      if (redirectTarget) {
+        toast.info("Profile updated. Continuing to your destination...")
+        navigate(redirectTarget, { replace: true })
+      }
     } catch (err: any) {
       console.error("[Profile] Update error:", err)
       setErrorMessage(err.message || "Failed to update profile.")
@@ -413,19 +435,27 @@ export function StudentProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="prof-university">University Campus</Label>
+                <Label htmlFor="prof-university">University Campus *</Label>
                 <div className="relative">
-                  <Input
+                  <select
                     id="prof-university"
-                    type="text"
-                    placeholder="e.g. State University"
                     value={universityName}
                     onChange={(e) => setUniversityName(e.target.value)}
                     disabled={isSaving}
-                    className="pl-9 h-10 text-sm"
-                  />
+                    className="w-full h-10 pl-9 pr-8 text-sm rounded-md border border-input bg-background text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring appearance-none cursor-pointer"
+                  >
+                    {SUPPORTED_UNIVERSITIES.map((univ) => (
+                      <option key={univ.id} value={univ.name}>
+                        {univ.name}
+                      </option>
+                    ))}
+                  </select>
                   <GraduationCap className="size-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
                 </div>
+                <p className="text-[11px] text-primary/80 dark:text-primary/90 font-medium flex items-center gap-1.5 pt-0.5">
+                  <span>✦</span>
+                  <span>{MORE_UNIVERSITIES_NOTE}</span>
+                </p>
               </div>
 
               <div className="space-y-1.5">

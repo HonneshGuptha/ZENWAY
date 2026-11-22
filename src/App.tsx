@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { MascotLoader } from "@/components/ui/MascotLoader"
 import { EntryIntro } from "@/components/ui/EntryIntro"
 import { hasSeenIntro } from "@/components/ui/mascotConstants"
+import { MascotNotificationToast } from "@/components/notifications/MascotNotificationToast"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "@/context/RouterContext"
 import { pageTransitionVariants } from "@/lib/motion"
@@ -353,6 +354,7 @@ function App() {
           </React.Suspense>
         </div>
       </AppShell>
+      <MascotNotificationToast />
     </RouteGuard>
   )
 }

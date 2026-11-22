@@ -46,6 +46,8 @@ import { DisputeModal } from "@/components/exchange/DisputeModal"
 import { ContactHandoffCard } from "@/components/ContactHandoffCard"
 import { StatusBadge } from "@/components/ui/StatusBadge"
 import { EmptyState } from "@/components/ui/EmptyState"
+import { useProfileGuard } from "@/hooks/useProfileGuard"
+import { ProfileCompletionModal } from "@/components/profile/ProfileCompletionModal"
 
 type PackageSize = "envelope" | "small_box" | "backpack" | "medium_box"
 
@@ -121,6 +123,7 @@ export function CarryPage() {
   const [newDeadline, setNewDeadline] = React.useState("")
   const [newDescription, setNewDescription] = React.useState("")
   const [photoFile, setPhotoFile] = React.useState<File | null>(null)
+  const profileGuard = useProfileGuard()
 
   // Offer Modal
   const [offeringRequest, setOfferingRequest] = React.useState<CarryRequestWithDetails | null>(null)
@@ -245,9 +248,16 @@ export function CarryPage() {
     }
   }, [fetchCarryRequests, fetchUserCarryData, user])
 
-  // Create Request Handler
+  // Create Request Handler with Profile Completeness Protection
   const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!profileGuard.requireCompleteProfile(() => proceedCreateRequest(), "Package Delivery Request")) {
+      return
+    }
+    await proceedCreateRequest()
+  }
+
+  const proceedCreateRequest = async () => {
     if (!user) return
     if (!isVerified) {
       toast.error("Student ID verification required before requesting item deliveries.")
@@ -310,9 +320,16 @@ export function CarryPage() {
     }
   }
 
-  // Submit Carrier Offer Handler
+  // Submit Carrier Offer Handler with Profile Completeness Protection
   const handleConfirmOffer = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!profileGuard.requireCompleteProfile(() => proceedConfirmOffer(), "Carrier Delivery Offer")) {
+      return
+    }
+    await proceedConfirmOffer()
+  }
+
+  const proceedConfirmOffer = async () => {
     if (!user || !offeringRequest) return
     if (!isVerified) {
       toast.error("Student ID verification required before offering to carry.")
@@ -345,8 +362,15 @@ export function CarryPage() {
     }
   }
 
-  // Accept Offer Handler (Calls atomic accept_carry_offer RPC)
+  // Accept Offer Handler with Profile Completeness Protection
   const handleAcceptOffer = async (offerId: string) => {
+    if (!profileGuard.requireCompleteProfile(() => proceedAcceptOffer(offerId), "Accepting Carry Offer")) {
+      return
+    }
+    await proceedAcceptOffer(offerId)
+  }
+
+  const proceedAcceptOffer = async (offerId: string) => {
     try {
       setActionLoadingId(offerId)
       const { error } = await supabase.rpc("accept_carry_offer", {
@@ -1394,6 +1418,13 @@ export function CarryPage() {
           }}
         />
       )}
+      {/* Incomplete Profile Completion Modal (Zero Data Loss) */}
+      <ProfileCompletionModal
+        isOpen={profileGuard.isModalOpen}
+        onClose={profileGuard.handleModalClose}
+        onSuccess={profileGuard.handleModalSuccess}
+        serviceName={profileGuard.serviceContext}
+      />
     </motion.div>
   )
 }

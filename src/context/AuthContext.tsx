@@ -2,6 +2,8 @@ import * as React from "react"
 import type { User, Session } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/types/database.types"
+import { isValidUniversity, normalizeUniversity } from "@/constants/universities"
+import { isValidIndianPhone, normalizeIndianPhone } from "@/utils/phone"
 
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 export type StudentVerification = Database["public"]["Tables"]["student_verifications"]["Row"]
@@ -10,8 +12,8 @@ export interface SignUpData {
   email: string
   password: string
   fullName: string
-  phoneNumber?: string
-  universityName?: string
+  phoneNumber: string
+  universityName: string
 }
 
 export interface AdminRegistrationRecord {
@@ -58,6 +60,9 @@ interface AuthContextType {
   isRegistrationPending: boolean
   isRegistrationRejected: boolean
   registrationRejectionReason: string | null
+  isProfileComplete: boolean
+  missingProfileFields: { university: boolean; phone: boolean }
+  updateProfileDetails: (details: { fullName?: string; universityName?: string; phoneNumber?: string }) => Promise<void>
 }
 
 const AuthContext = React.createContext<AuthContextType | null>(null)
@@ -108,7 +113,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return
           }
 
-          setProfile(profileData as Profile)
+          // Fetch own phone number from secure view
+          let ownPhone: string | null = null
+          try {
+            const { data: pubData } = await supabase
+              .from("public_profiles")
+              .select("phone_number")
+              .eq("id", userId)
+              .maybeSingle()
+            if (pubData?.phone_number) {
+              ownPhone = pubData.phone_number
+            }
+          } catch {
+            // Keep existing or null
+          }
+
+          setProfile({
+            ...(profileData as Profile),
+            phone_number: ownPhone ?? (profileData as any).phone_number ?? null,
+            phone: ownPhone ?? (profileData as any).phone ?? null,
+          } as Profile)
 
           // If user is administrator, authoritatively verify active session on backend
           if (isUserAdmin) {
@@ -220,21 +244,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, fetchProfileAndVerification])
 
-  // Email / Password Registration
+  // Email / Password Registration with Mandatory University & Phone
   const signUp = React.useCallback(
     async ({ email, password, fullName, phoneNumber, universityName }: SignUpData) => {
       setError(null)
+
+      if (!fullName || fullName.trim().length < 2) {
+        throw new Error("Please enter your full name (minimum 2 characters).")
+      }
+      if (!email || !email.includes("@")) {
+        throw new Error("Please enter a valid personal email address.")
+      }
+      if (!password || password.length < 8) {
+        throw new Error("Password must be at least 8 characters long.")
+      }
+      const canonicalUniv = normalizeUniversity(universityName)
+      if (!canonicalUniv) {
+        throw new Error("Please select a supported university.")
+      }
+      const canonicalPhone = normalizeIndianPhone(phoneNumber)
+      if (!canonicalPhone) {
+        throw new Error("Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).")
+      }
+
       const redirectUrl = `${window.location.origin}/auth/callback`
 
       const { data, error: signUpErr } = await supabase.auth.signUp({
-        email,
+        email: email.trim().toLowerCase(),
         password,
         options: {
           emailRedirectTo: redirectUrl,
           data: {
-            full_name: fullName,
-            phone_number: phoneNumber || null,
-            university_name: universityName || null,
+            full_name: fullName.trim(),
+            university: canonicalUniv,
+            university_name: canonicalUniv,
+            phone: canonicalPhone,
+            phone_number: canonicalPhone,
           },
         },
       })
@@ -578,6 +623,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const registrationRejectionReason =
     (profile as any)?.registration_rejection_reason || null
 
+  const isProfileComplete = React.useMemo(() => {
+    if (!profile) return false
+    if (isAdmin) return true
+    const hasValidUniv = isValidUniversity(profile.university_name)
+    const phoneVal = (profile as any)?.phone || profile?.phone_number
+    const hasValidPhone = isValidIndianPhone(phoneVal)
+    return Boolean(hasValidUniv && hasValidPhone)
+  }, [profile, isAdmin])
+
+  const missingProfileFields = React.useMemo(() => {
+    if (!profile) return { university: true, phone: true }
+    if (isAdmin) return { university: false, phone: false }
+    const phoneVal = (profile as any)?.phone || profile?.phone_number
+    return {
+      university: !isValidUniversity(profile.university_name),
+      phone: !isValidIndianPhone(phoneVal),
+    }
+  }, [profile, isAdmin])
+
+  const updateProfileDetails = React.useCallback(
+    async (details: { fullName?: string; universityName?: string; phoneNumber?: string }) => {
+      if (!user) throw new Error("User must be authenticated to update profile.")
+      const updates: Record<string, any> = {}
+
+      if (details.fullName && details.fullName.trim().length >= 2) {
+        updates.full_name = details.fullName.trim()
+      }
+
+      if (details.universityName) {
+        const canonicalUniv = normalizeUniversity(details.universityName)
+        if (!canonicalUniv) {
+          throw new Error("Please select a supported university.")
+        }
+        updates.university_name = canonicalUniv
+      }
+
+      if (details.phoneNumber) {
+        const canonicalPhone = normalizeIndianPhone(details.phoneNumber)
+        if (!canonicalPhone) {
+          throw new Error("Please enter a valid 10-digit Indian mobile number.")
+        }
+        updates.phone = canonicalPhone
+        updates.phone_number = canonicalPhone
+      }
+
+      if (Object.keys(updates).length === 0) return
+
+      const { error: updateErr } = await supabase
+        .from("profiles")
+        .update(updates as any)
+        .eq("id", user.id)
+
+      if (updateErr) throw updateErr
+
+      await refreshProfile()
+    },
+    [user, refreshProfile]
+  )
+
   const value = React.useMemo(
     () => ({
       user,
@@ -608,6 +712,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isRegistrationPending,
       isRegistrationRejected,
       registrationRejectionReason,
+      isProfileComplete,
+      missingProfileFields,
+      updateProfileDetails,
     }),
     [
       user,
@@ -638,6 +745,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isRegistrationPending,
       isRegistrationRejected,
       registrationRejectionReason,
+      isProfileComplete,
+      missingProfileFields,
+      updateProfileDetails,
     ]
   )
 

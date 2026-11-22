@@ -1,7 +1,9 @@
-import * as React from "react"
-import { supabase } from "@/lib/supabase"
-import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "@/context/RouterContext"
+import {
+  useNotifications,
+  type NotificationRecord,
+  deduplicateNotifications,
+} from "@/context/NotificationContext"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -18,188 +20,27 @@ import {
   Star,
   Check,
 } from "lucide-react"
-import { toast } from "sonner"
 
-interface NotificationRecord {
-  id: string
-  user_id: string
-  type: string
-  title: string
-  message: string
-  data: any
-  is_read: boolean
-  created_at: string
-}
-
-/**
- * Deduplicate twin database notifications while preserving all distinct independent events.
- * Corrects duplicate records caused by concurrent RPC + database trigger dispatches
- * by matching across all transaction entity references, avoiding arbitrary time heuristics.
- */
-function deduplicateNotifications(list: NotificationRecord[]): NotificationRecord[] {
-  const seen = new Set<string>()
-  const result: NotificationRecord[] = []
-
-  for (const n of list) {
-    if (seen.has(n.id)) continue
-
-    const entityRefs = [
-      n.data?.request_id,
-      n.data?.rental_request_id,
-      n.data?.ride_request_id,
-      n.data?.carry_offer_id,
-      n.data?.offer_id,
-    ].filter(Boolean)
-
-    const keys = entityRefs.length > 0
-      ? entityRefs.map((ref) => `${n.user_id}:${n.type}:${ref}`)
-      : [`${n.user_id}:${n.id}`]
-
-    if (keys.some((k) => seen.has(k))) continue
-
-    seen.add(n.id)
-    for (const k of keys) {
-      seen.add(k)
-    }
-    result.push(n)
-  }
-
-  return result
-}
+export { type NotificationRecord, deduplicateNotifications }
 
 export function NotificationsDropdown() {
-  const { user } = useAuth()
   const { navigate } = useRouter()
-
-  const [notifications, setNotifications] = React.useState<NotificationRecord[]>([])
-  const [unreadCount, setUnreadCount] = React.useState(0)
-
-  const fetchNotifications = React.useCallback(async () => {
-    if (!user) return
-    try {
-      const { data, error } = await supabase
-        .from("notifications")
-        .select("id, user_id, type, title, message, data, is_read, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(20)
-
-      if (error) throw error
-
-      const list = (data || []) as NotificationRecord[]
-      const deduped = deduplicateNotifications(list)
-      setNotifications(deduped)
-      setUnreadCount(deduped.filter((n) => !n.is_read).length)
-    } catch (err) {
-      console.error("[Notifications] Fetch error:", err)
-    }
-  }, [user])
-
-  React.useEffect(() => {
-    if (!user) {
-      setNotifications([])
-      setUnreadCount(0)
-      return
-    }
-
-    // 1. Initial fetch
-    fetchNotifications()
-
-    // 2. Realtime subscription: live updates on INSERT/UPDATE for current user with clean unique channel instance
-    const channelName = `user-notifs-${user.id}-${Math.random().toString(36).slice(2, 7)}`
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const newNotif = payload.new as NotificationRecord
-          setNotifications((prev) => {
-            const dedupedList = deduplicateNotifications([newNotif, ...prev])
-            // Only toast if it was genuinely added to the deduplicated list
-            const isAdded = dedupedList.some((n) => n.id === newNotif.id)
-            if (isAdded && !newNotif.is_read) {
-              setUnreadCount(dedupedList.filter((n) => !n.is_read).length)
-              toast.info(newNotif.title, {
-                description: newNotif.message,
-              })
-            }
-            return dedupedList
-          })
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const updatedNotif = payload.new as NotificationRecord
-          setNotifications((prev) => {
-            const nextList = prev.map((n) => (n.id === updatedNotif.id ? updatedNotif : n))
-            setUnreadCount(nextList.filter((n) => !n.is_read).length)
-            return nextList
-          })
-        }
-      )
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR") {
-          console.error("[Notifications] Realtime channel error")
-        }
-      })
-
-    // 3. Fallback background sync every 60 seconds
-    const interval = setInterval(fetchNotifications, 60000)
-
-    return () => {
-      clearInterval(interval)
-      supabase.removeChannel(channel)
-    }
-  }, [user, fetchNotifications])
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications()
 
   // Mark all read
   const handleMarkAllRead = async () => {
-    if (!user) return
-    try {
-      await supabase
-        .from("notifications")
-        .update({ is_read: true })
-        .eq("user_id", user.id)
-        .eq("is_read", false)
-
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, is_read: true }))
-      )
-      setUnreadCount(0)
-    } catch (err) {
-      console.error("[Notifications] Mark all read error:", err)
-    }
+    await markAllAsRead()
   }
 
   // Mark single notification read
   const handleClickNotification = async (notification: NotificationRecord) => {
     if (!notification.is_read) {
-      try {
-        await supabase
-          .from("notifications")
-          .update({ is_read: true })
-          .eq("id", notification.id)
-
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n))
-        )
-        setUnreadCount((c) => Math.max(0, c - 1))
-      } catch (err) {
-        console.error("[Notifications] Mark read error:", err)
-      }
+      await markAsRead(notification.id)
     }
 
     // Contextual navigation
