@@ -186,7 +186,7 @@ export function ActivityPage() {
         .from("carry_offers")
         .select(`
           id, status, created_at,
-          request:carry_requests(item_title, pickup_location, delivery_location, reward_amount)
+          request:carry_requests!carry_offers_request_id_fkey(item_title, pickup_location, delivery_location, reward_amount)
         `)
         .eq("carrier_id", user.id)
 

@@ -64,35 +64,42 @@ export function CancellationModal({
         console.warn("[Cancellation] RPC fallback to direct tables:", rpcErr)
 
         if (service === "rent") {
-          await supabase
+          const { error: updErr } = await supabase
             .from("rental_requests")
             .update({ status: "cancelled" as any, cancellation_reason: fullReason } as any)
             .eq("id", requestId)
+          if (updErr) throw updErr
         } else if (service === "ride") {
-          await supabase
+          const { error: updErr } = await supabase
             .from("ride_requests")
             .update({ status: "cancelled" as any, cancellation_reason: fullReason } as any)
             .eq("id", requestId)
+          if (updErr) throw updErr
         } else if (service === "carry") {
-          await supabase
+          const { error: updErr } = await supabase
             .from("carry_requests")
             .update({ status: "cancelled" as any, cancellation_reason: fullReason } as any)
             .eq("id", requestId)
+          if (updErr) throw updErr
         }
       }
 
-      // 2. Audit log
-      await supabase.from("audit_logs").insert({
-        actor_id: user.id,
-        action: `TRANSACTION_CANCELLED_${service.toUpperCase()}`,
-        target_entity: service,
-        target_id: requestId,
-        details: {
-          category: reasonCategory,
-          explanation: explanation.trim(),
-          service,
-        },
-      })
+      // 2. Audit log (non-blocking)
+      try {
+        await supabase.from("audit_logs").insert({
+          actor_id: user.id,
+          action: `TRANSACTION_CANCELLED_${service.toUpperCase()}`,
+          target_entity: service,
+          target_id: requestId,
+          details: {
+            category: reasonCategory,
+            explanation: explanation.trim(),
+            service,
+          },
+        })
+      } catch (logErr) {
+        console.warn("[Cancellation] Audit log notice:", logErr)
+      }
 
       toast.success("Transaction cancelled. Availability and audit records updated.")
       onSuccess()

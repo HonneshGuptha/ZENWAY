@@ -213,7 +213,7 @@ export function CarryPage() {
           .from("carry_offers")
           .select(`
             id, request_id, carrier_id, message, proposed_delivery_time, status, created_at,
-            request:carry_requests(item_title, pickup_location, delivery_location, reward_amount, status, requester_id),
+            request:carry_requests!carry_offers_request_id_fkey(item_title, pickup_location, delivery_location, reward_amount, status, requester_id),
             carrier:public_profiles!carry_offers_carrier_id_fkey(full_name, university_name)
           `)
           .eq("carrier_id", user.id)
@@ -231,7 +231,7 @@ export function CarryPage() {
           .from("carry_offers")
           .select(`
             id, request_id, carrier_id, message, proposed_delivery_time, status, created_at,
-            request:carry_requests(item_title, pickup_location, delivery_location, reward_amount, status, requester_id),
+            request:carry_requests!carry_offers_request_id_fkey(item_title, pickup_location, delivery_location, reward_amount, status, requester_id),
             carrier:public_profiles!carry_offers_carrier_id_fkey(full_name, university_name)
           `)
           .in("request_id", myReqIds)
