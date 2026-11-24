@@ -40,6 +40,7 @@ import {
 import { normalizeIndianPhone } from "@/utils/phone"
 import { toast } from "sonner"
 import { pageTransitionVariants } from "@/lib/motion"
+import { RenterDrivingLicenceCard } from "@/components/profile/RenterDrivingLicenceCard"
 
 export function StudentProfilePage() {
   const {
@@ -594,6 +595,11 @@ export function StudentProfilePage() {
           </CardFooter>
         </form>
       </Card>
+
+      {/* Renter Driving Licence Verification & Renewal */}
+      {(profile?.id || user?.id) && (
+        <RenterDrivingLicenceCard userId={profile?.id || user?.id || ""} />
+      )}
     </motion.div>
   )
 }

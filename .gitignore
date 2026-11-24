@@ -18,6 +18,9 @@ dist-ssr
 supabase/backups/
 *.backup.json
 
+# Local scripts & artifacts
+scripts/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1019,55 +1019,127 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          authorization_document_path: string | null
+          authorization_status: string
           brand_model: string | null
           created_at: string
           daily_rate: number | null
           deposit_amount: number
           description: string
+          document_rejection_reason: string | null
+          document_verification_status: string
+          ev_exemption_verified: boolean
+          ev_speed_class: string | null
+          grandfather_expires_at: string | null
           hourly_rate: number | null
           id: string
+          insurance_document_path: string | null
+          insurance_expiry_date: string | null
+          insurance_policy_number: string | null
+          insurance_status: string
+          insurance_suitability_status: string
+          insurance_use_type: string | null
+          is_registered_owner: boolean
           latitude: number | null
           longitude: number | null
           owner_id: string
           pickup_location: string
+          puc_document_path: string | null
+          puc_exempt: boolean
+          puc_expiry_date: string | null
+          puc_status: string
+          rc_document_path: string | null
+          rc_status: string
+          registration_number: string | null
           status: Database["public"]["Enums"]["listing_status"]
           title: string
+          transmission_type: string | null
           type: Database["public"]["Enums"]["vehicle_type"]
           updated_at: string
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
+          authorization_document_path?: string | null
+          authorization_status?: string
           brand_model?: string | null
           created_at?: string
           daily_rate?: number | null
           deposit_amount?: number
           description: string
+          document_rejection_reason?: string | null
+          document_verification_status?: string
+          ev_exemption_verified?: boolean
+          ev_speed_class?: string | null
+          grandfather_expires_at?: string | null
           hourly_rate?: number | null
           id?: string
+          insurance_document_path?: string | null
+          insurance_expiry_date?: string | null
+          insurance_policy_number?: string | null
+          insurance_status?: string
+          insurance_suitability_status?: string
+          insurance_use_type?: string | null
+          is_registered_owner?: boolean
           latitude?: number | null
           longitude?: number | null
           owner_id: string
           pickup_location: string
+          puc_document_path?: string | null
+          puc_exempt?: boolean
+          puc_expiry_date?: string | null
+          puc_status?: string
+          rc_document_path?: string | null
+          rc_status?: string
+          registration_number?: string | null
           status?: Database["public"]["Enums"]["listing_status"]
           title: string
+          transmission_type?: string | null
           type: Database["public"]["Enums"]["vehicle_type"]
           updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
+          authorization_document_path?: string | null
+          authorization_status?: string
           brand_model?: string | null
           created_at?: string
           daily_rate?: number | null
           deposit_amount?: number
           description?: string
+          document_rejection_reason?: string | null
+          document_verification_status?: string
+          ev_exemption_verified?: boolean
+          ev_speed_class?: string | null
+          grandfather_expires_at?: string | null
           hourly_rate?: number | null
           id?: string
+          insurance_document_path?: string | null
+          insurance_expiry_date?: string | null
+          insurance_policy_number?: string | null
+          insurance_status?: string
+          insurance_suitability_status?: string
+          insurance_use_type?: string | null
+          is_registered_owner?: boolean
           latitude?: number | null
           longitude?: number | null
           owner_id?: string
           pickup_location?: string
+          puc_document_path?: string | null
+          puc_exempt?: boolean
+          puc_expiry_date?: string | null
+          puc_status?: string
+          rc_document_path?: string | null
+          rc_status?: string
+          registration_number?: string | null
           status?: Database["public"]["Enums"]["listing_status"]
           title?: string
+          transmission_type?: string | null
           type?: Database["public"]["Enums"]["vehicle_type"]
           updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {
@@ -1084,6 +1156,165 @@ export type Database = {
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "vehicles_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_settings: {
+        Row: {
+          id: string
+          dl_custody_policy_mode: "disabled" | "optional" | "required"
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          dl_custody_policy_mode?: "disabled" | "optional" | "required"
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          dl_custody_policy_mode?: "disabled" | "optional" | "required"
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      renter_driving_licences: {
+        Row: {
+          id: string
+          user_id: string
+          licence_number: string | null
+          licence_categories: string[] | null
+          expiry_date: string | null
+          front_document_path: string | null
+          back_document_path: string | null
+          status: "draft" | "pending" | "approved" | "rejected" | "expired" | "superseded"
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          is_current: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          licence_number?: string | null
+          licence_categories?: string[] | null
+          expiry_date?: string | null
+          front_document_path?: string | null
+          back_document_path?: string | null
+          status?: "draft" | "pending" | "approved" | "rejected" | "expired" | "superseded"
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          is_current?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          licence_number?: string | null
+          licence_categories?: string[] | null
+          expiry_date?: string | null
+          front_document_path?: string | null
+          back_document_path?: string | null
+          status?: "draft" | "pending" | "approved" | "rejected" | "expired" | "superseded"
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          is_current?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renter_driving_licences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renter_driving_licences_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      verification_audit_logs: {
+        Row: {
+          id: string
+          entity_type: "vehicle_document" | "renter_dl"
+          entity_id: string
+          subject_user_id: string
+          document_type: string
+          action: "submitted" | "resubmitted" | "approved" | "rejected" | "expired" | "invalidated_on_edit" | "admin_override" | "pending_review"
+          previous_status: string | null
+          new_status: string
+          reason: string | null
+          actor_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          entity_type: "vehicle_document" | "renter_dl"
+          entity_id: string
+          subject_user_id: string
+          document_type: string
+          action: "submitted" | "resubmitted" | "approved" | "rejected" | "expired" | "invalidated_on_edit" | "admin_override" | "pending_review"
+          previous_status?: string | null
+          new_status: string
+          reason?: string | null
+          actor_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          entity_type?: "vehicle_document" | "renter_dl"
+          entity_id?: string
+          subject_user_id?: string
+          document_type?: string
+          action?: "submitted" | "resubmitted" | "approved" | "rejected" | "expired" | "invalidated_on_edit" | "admin_override"
+          previous_status?: string | null
+          new_status?: string
+          reason?: string | null
+          actor_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_audit_logs_subject_user_id_fkey"
+            columns: ["subject_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_audit_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
         ]
       }
     }
@@ -1327,6 +1558,71 @@ export type Database = {
         Returns: boolean
       }
       verify_admin_access_key: { Args: { p_key: string }; Returns: boolean }
+      create_renter_dl_submission: {
+        Args: Record<string, never>
+        Returns: string
+      }
+      submit_renter_dl: {
+        Args: {
+          p_submission_id: string
+          p_licence_number: string
+          p_licence_categories: string[]
+          p_expiry_date: string
+          p_front_document_path: string
+          p_back_document_path?: string | null
+        }
+        Returns: string
+      }
+      review_vehicle_documents: {
+        Args: {
+          p_vehicle_id: string
+          p_overall_status: string
+          p_rejection_reason?: string | null
+          p_rc_status?: string | null
+          p_insurance_status?: string | null
+          p_insurance_suitability_status?: string | null
+          p_insurance_use_type?: string | null
+          p_puc_status?: string | null
+          p_puc_exempt?: boolean | null
+          p_authorization_status?: string | null
+          p_ev_exemption_verified?: boolean | null
+          p_notes?: string | null
+          p_expected_status?: string | null
+        }
+        Returns: Json
+      }
+      review_renter_dl: {
+        Args: {
+          p_licence_id: string
+          p_decision: string
+          p_rejection_reason?: string | null
+          p_notes?: string | null
+          p_expected_status?: string | null
+        }
+        Returns: Json
+      }
+      get_admin_verification_audit_logs: {
+        Args: {
+          p_entity_type?: string | null
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: {
+          action: string
+          actor_id: string | null
+          actor_name: string | null
+          created_at: string
+          document_type: string
+          entity_id: string
+          entity_type: string
+          id: string
+          new_status: string
+          previous_status: string | null
+          reason: string | null
+          subject_name: string | null
+          subject_user_id: string
+        }[]
+      }
     }
     Enums: {
       account_verification_status:
